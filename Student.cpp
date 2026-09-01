@@ -1,0 +1,227 @@
+#include "student.hpp"
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <limits>
+#include <thread>
+#include <chrono>
+#ifdef _WIN32
+    #include <conio.h>
+#else
+    #include <unistd.h>
+    #include <termios.h>
+#endif
+
+using namespace std;
+
+student::student(string username, string password, string role, int ID, string major)
+    : user(username, password, role, ID, major,false) {
+    // Additional initialization for student-specific properties can be done here if needed
+}
+
+
+
+void student::login(vector<user*>& users) {
+    string inputUsername, inputPassword;
+    user* account = nullptr;
+    int unknownAccountAttempts = 0;
+
+    while (true) {
+        cout << "Enter username: ";
+        cin >> inputUsername;
+        account = nullptr;
+        if (hasExtraInputOnLine()) {
+            cout << "Invalid input: spaces are not allowed in usernames.\n";
+            inputUsername.clear();
+        }
+
+        for (auto* userAccount : users) {
+            if (userAccount->getusername() == inputUsername &&
+                userAccount->getRole() == "Student") {
+                account = userAccount;
+                break;
+            }
+        }
+
+        if (account != nullptr && !account->isActive()) {
+            cout << "Account is locked. Login is not available.\n";
+            return;
+        }
+
+        cout << "Enter password: ";
+        inputPassword = getPassword();
+
+        if (account != nullptr && authenticate(inputUsername, inputPassword, users)) {
+            break;
+        }
+
+        if (account != nullptr) {
+            account->increasedFailedAttempts();
+            if (!account->isActive()) {
+                cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
+                account->addLog("Student account locked after too many failed login attempts");
+                return;
+            }
+        } else {
+            ++unknownAccountAttempts;
+            if (unknownAccountAttempts >= 3) {
+                cout << "Login attempts exceeded.\n";
+                return;
+            }
+        }
+
+        cout << "Invalid credentials. Please try again.\n";
+    }
+
+    if (account != nullptr) {
+        this->username = inputUsername;
+        this->password = inputPassword;
+        cout << username << " logged in successfully.\n";
+        addLog("Student logged in");
+    } else {
+        cout << "Invalid credentials. Login failed.\n";
+    }
+}
+
+
+
+
+bool student::authenticate(const string& username, const string& password, vector<user*>& users) {
+    for (const auto& u : users) {
+        if (u->getusername() == username && u->getpassword() == password && u->getRole() == "Student") {
+            return true;
+        }
+    }
+    return false;
+}
+
+void student::logout() {
+    cout << username << " logged out.\n";
+}
+
+void student::showprofile() {
+    cout << "Student Profile\n";
+    cout << "Username: " << username << endl;
+    cout << "Role: " << role << endl;
+    cout << "ID: " << ID << endl;
+    cout <<"major: "<< major <<endl;
+    // Date of account creation
+    char* dt = ctime(&creationDate);
+    cout << "Account created on: " << dt << endl;
+    addLog("Student " + username + " viewed profile");
+}
+
+void student::addCourse(string courseName) {
+    if (hasCourse(courseName)) {
+        cout << "Student " << username << " is already enrolled in: " << courseName << endl;
+        return;
+    }
+    enrolledCourses.push_back(courseName);
+    cout << "Student " << username << " added to course: " << courseName << endl;
+}
+
+bool student::hasCourse(const string& courseName) const {
+    return find(enrolledCourses.begin(), enrolledCourses.end(), courseName) != enrolledCourses.end();
+}
+
+void student::removeCourse(string courseName) {
+    auto it = find(enrolledCourses.begin(), enrolledCourses.end(), courseName);
+    if (it != enrolledCourses.end()) {
+        enrolledCourses.erase(it);
+    }
+}
+
+const vector<string>& student::getEnrolledCourses() const {
+    return enrolledCourses;
+}
+
+void student::viewCourses() {
+    cout << "Courses for " << username << ":\n";
+    for (const auto& course : enrolledCourses) {
+        cout << course << endl;
+    }
+    addLog("Student " + username + " viewed courses");
+}
+
+void student::showMenu(std::vector<user*>& users) {
+    int choice;
+    do {
+        cout << "\nStudent Menu:\n";
+        cout << "1. View Courses\n";
+        cout << "2. Show Profile\n";
+        cout << "3. Logout\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
+        cout << "\n";
+        
+        if(cin.fail() || choice < 1 || choice > 3 || hasExtraInputOnLine()) {
+            cin.clear();  // clear the error flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
+            cout << "Invalid input! Please enter a number between 1 and 3.\n";
+            continue;  // ask for input again
+        }
+
+        switch (choice) {
+            case 1:
+                viewCourses();
+                break;
+            case 2:
+                showprofile();
+                break;
+            case 3:
+                logout();
+                break;
+            default:
+                cout << "Invalid choice. Please try again.\n";
+        }
+    } while (choice != 3);
+}
+
+string student::getPassword() {
+    string password = "";
+    char ch;
+
+#ifdef _WIN32
+    // Windows implementation using conio.h
+    while (true) {
+        ch = _getch();  // Read a single character without echoing
+        if (ch == 13) {  // Enter key pressed (carriage return)
+            cout << endl;
+            break;
+        } else if (ch == 8) {  // Backspace key
+            if (password.length() > 0) {
+                password.pop_back();
+                cout << "\b \b";  // Erase the last '*' printed
+            }
+        } else {
+            password.push_back(ch);  // Add character to password
+            cout << "*";  // Print '*' instead of the actual character
+        }
+    }
+#else
+    // Unix/Linux implementation using termios.h
+    termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);  // Get current terminal settings
+    newt = oldt;
+    newt.c_lflag &= ~ECHO;  // Turn off echoing of typed characters
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);  // Apply new settings
+
+    while (true) {
+        ch = getchar();  // Read a single character
+        if (ch == 10) {  // Enter key pressed (newline)
+            break;
+        } else if (ch == 127) {  // Backspace key
+            if (password.length() > 0) {
+                password.pop_back();
+                cout << "\b \b";  // Erase the last '*' printed
+            }
+        } else {
+            password.push_back(ch);  // Add character to password
+            cout << "*";  // Print '*' instead of the actual character
+        }
+    }
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Restore terminal settings
+#endif
+    return password;  // Return the password
+}
