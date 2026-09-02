@@ -181,7 +181,7 @@ void instructor::viewCoursesForMajor(const string& major) {
         majors.push_back(entry.first);
         cout << majors.size() << ". " << entry.first << "\n";
     }
-
+    cout << "\n";
     int choice;
     cout << "Select a major (1-" << majors.size() << ") or 0 to cancel: ";
     cin >> choice;
@@ -235,7 +235,7 @@ void instructor::viewStudentCourses(vector<user*>& users) {
     }
 
     int choice;
-    cout << "Select a student (1-" << students.size() << ") or 0 to cancel: ";
+    cout << "Select a student (1-" << students.size() << ") or 0 to cancel:";
     cin >> choice;
     while (cin.fail() || choice < 0 ||
            choice > static_cast<int>(students.size()) ||
@@ -259,7 +259,7 @@ void instructor::viewStudentCourses(vector<user*>& users) {
         cout << "No courses enrolled.\n";
     } else {
         for (const auto& course : enrolledCourses) {
-            cout << "- " << course.courseName << " (" << course.creditHours << " credits)\n";
+            cout << "- " << course.courseName  << " (" << course.creditHours << " credits)\n";
         }
     }
 }
@@ -354,12 +354,15 @@ void instructor::addCourse(vector<user*>& users) {
             cout << "Student " << selectedStudent->getusername() << " already has the course: " << courseName << "\n";
             continue;
         }
-        selectedStudent->addCourse(courseName);
+        selectedStudent->addCourse(courseName, creditHours);
 
         // Add course to instructor's course list if not already there (avoid duplicates)
-        auto courseIt = find(courses.begin(), courses.end(), courseName);
+        auto courseIt = find_if(courses.begin(), courses.end(),
+            [&](const CourseInfo& courseInfo) {
+                return courseInfo.courseName == courseName;
+            });
         if (courseIt == courses.end()) {
-            courses.push_back(courseName);
+            courses.push_back(CourseInfo(courseName, creditHours));
         }
 
         cout << "Course " << courseName << " added to student " << selectedStudent->getusername() << " successfully.\n";
@@ -444,9 +447,12 @@ void instructor::removeCourse(vector<user*>& users) {
     }
 
     if (!courseStillAssigned) {
-        auto it = find(courses.begin(), courses.end(), courseName);
+        auto it = remove_if(courses.begin(), courses.end(),
+            [&](const CourseInfo& courseInfo) {
+                return courseInfo.courseName == courseName;
+            });
         if (it != courses.end()) {
-            courses.erase(it);
+            courses.erase(it, courses.end());
         }
     }
 
@@ -495,16 +501,13 @@ void instructor::viewCourses(vector<user*>& users) {
     }
 
     vector<string> taughtForMajor;
-    for (const auto& course : courses) {
-        bool exists = false;
-        for (const auto& catalogCourse : catalogIt->second) {
-            if (catalogCourse.courseName == course) {
-                exists = true;
-                break;
-            }
-        }
-        if (exists) {
-            taughtForMajor.push_back(course);
+    for (const auto& courseInfo : courses) {
+        const string courseName = courseInfo.courseName;
+        if (find_if(catalogIt->second.begin(), catalogIt->second.end(),
+                    [&](const CourseInfo& catalogCourse) {
+                        return catalogCourse.courseName == courseName;
+                    }) != catalogIt->second.end()) {
+            taughtForMajor.push_back(courseName);
         }
     }
 
@@ -543,20 +546,19 @@ void instructor::showMenu(vector<user*>& users) {
         cout << "\nInstructor Menu:\n";
         cout << "1. Add Course\n";
         cout << "2. Remove Course\n";
-        cout << "3. View Courses\n";
-        cout << "4. View Courses for Major\n";
-        cout << "5. View Student Courses\n";
-        cout << "6. View Students\n";
-        cout << "7. List All Majors\n";
-        cout << "8. Show Profile\n";
-        cout << "9. Logout\n";
+        cout << "3. View Courses for Major\n";
+        cout << "4. View Student Courses\n";
+        cout << "5. View Students\n";
+        cout << "6. List All Majors\n";
+        cout << "7. Show Profile\n";
+        cout << "8. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         
-        if(cin.fail() || choice < 1 || choice > 9 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 8 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 9.\n";
+            cout << "Invalid input! Please enter a number between 1 and 8.\n";
             continue;  // ask for input again
         }
 
@@ -569,31 +571,29 @@ void instructor::showMenu(vector<user*>& users) {
                 removeCourse(users);
                 break;
             }
-            case 3:
-                viewCourses(users);
-                break;
-            case 4:
+            case 3:{
                 viewCoursesForMajor(users[0]->getMajor());
                 break; 
-            case 5:
+                }
+            case 4:
                 viewStudentCourses(users);
                 break;   
-            case 6:
+            case 5:
                 viewStudents(users);
                 break;
-            case 7:
+            case 6:
                 listAllMajors();
                 break;
-            case 8:
+            case 7:
                 showprofile();
                 break;
-            case 9:
+            case 8:
                 logout();
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";
         }
-    } while (choice != 9);
+    } while (choice != 8);
 }
 
 string instructor::getPassword() {

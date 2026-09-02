@@ -15,7 +15,7 @@ struct CourseInfo {
 class instructor : public user {
     
 private:
-    vector<string> courses; // List of courses the instructor is teaching
+    vector<CourseInfo> courses; // List of courses the instructor is teaching
 public:
     instructor(string username, string password, string role, int ID,string major);
     
