@@ -581,64 +581,67 @@ void instructor::addGrade(vector<user*>& users) {
     }
 
 
-    //display courses for the selected student
-    cout << "\nCourses for " << selectedStudent->getusername() << ":\n";
-    for (size_t i = 0; i < enrolledCourses.size(); ++i) {
+    while (true) {
+        // Display courses for the selected student.
+        cout << "\nCourses for " << selectedStudent->getusername() << ":\n";
+        for (size_t i = 0; i < enrolledCourses.size(); ++i) {
+            cout << (i + 1) << ". "
+                 << enrolledCourses[i].courseName
+                 << " (" << enrolledCourses[i].creditHours
+                 << " credits)";
 
-        cout << (i + 1) << ". "
-             << enrolledCourses[i].courseName
-             << " (" << enrolledCourses[i].creditHours
-             << " credits)";
+            if (enrolledCourses[i].grade == -1) {
+                cout << " | Grade: Not assigned";
+            } else {
+                cout << " | Grade: "
+                     << enrolledCourses[i].grade
+                     << "/100";
+            }
 
-        if (enrolledCourses[i].grade == -1) {
-            cout << " | Grade: Not assigned";
+            cout << "\n";
         }
-        else {
-            cout << " | Grade: "
-                 << enrolledCourses[i].grade
-                 << "/100";
-        }
 
-        cout << "\n";
-    }
-
-
-    int courseChoice;
-    cout << "Select a course to add a grade for (1-" << enrolledCourses.size() << ") or 0 to cancel: ";
-    cin >> courseChoice;
-
-    while(cin.fail() || courseChoice < 0 || courseChoice > static_cast<int>(enrolledCourses.size()) || hasExtraInputOnLine()) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid input! Please enter a number between 0 and " << enrolledCourses.size() << ": ";
+        int courseChoice;
+        cout << "Select a course to add a grade for (1-" << enrolledCourses.size() << ") or 0 to cancel: ";
         cin >> courseChoice;
-    }
 
-    if(courseChoice == 0) {
-        cout << "Operation cancelled.\n";
-        return;
-    }
+        while (cin.fail() || courseChoice < 0 ||
+               courseChoice > static_cast<int>(enrolledCourses.size()) ||
+               hasExtraInputOnLine()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input! Please enter a number between 0 and "
+                 << enrolledCourses.size() << ": ";
+            cin >> courseChoice;
+        }
 
-    int grade;
-    cout << "Enter the grade for " << enrolledCourses[courseChoice - 1].courseName << " (0-100): ";
-    cin >> grade;
+        if (courseChoice == 0) {
+            cout << "Operation cancelled.\n";
+            return;
+        }
 
-    while(cin.fail() || grade < 0 || grade > 100 || hasExtraInputOnLine()) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid input! Please enter a grade between 0 and 100: ";
+        int grade;
+        cout << "Enter the grade for "
+             << enrolledCourses[courseChoice - 1].courseName
+             << " (0-100): ";
         cin >> grade;
-    }
-    
-    enrolledCourses[courseChoice - 1].grade = grade;
-    cout << "\nGrade added successfully!\n";
-    cout << "Student: " << selectedStudent->getusername() << "\n";
-    cout << "Course: "
-     << enrolledCourses[courseChoice - 1].courseName << "\n";
-    cout << "Grade: "
-     << enrolledCourses[courseChoice - 1].grade
-     << "/100\n";
 
+        while (cin.fail() || grade < 0 || grade > 100 || hasExtraInputOnLine()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input! Please enter a grade between 0 and 100: ";
+            cin >> grade;
+        }
+
+        enrolledCourses[courseChoice - 1].grade = grade;
+        cout << "\nGrade added successfully!\n";
+        cout << "Student: " << selectedStudent->getusername() << "\n";
+        cout << "Course: "
+             << enrolledCourses[courseChoice - 1].courseName << "\n";
+        cout << "Grade: "
+             << enrolledCourses[courseChoice - 1].grade
+             << "/100\n";
+    }
 
 }
 
@@ -655,7 +658,7 @@ void instructor::showMenu(vector<user*>& users) {
         cout << "6. View Students\n";
         cout << "7. List All Majors\n";
         cout << "8. Show Profile\n";
-        cout << "8. Logout\n";
+        cout << "9. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         
@@ -677,6 +680,7 @@ void instructor::showMenu(vector<user*>& users) {
             }
             case 3:{
                 addGrade(users);
+                break;
             }
             case 4:{
                 viewCoursesForMajor(users[0]->getMajor());
