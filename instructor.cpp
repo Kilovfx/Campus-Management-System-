@@ -104,15 +104,59 @@ void instructor::showprofile() {
 
 
 
-static const map<string, vector<string>>& getCourseCatalog() {
-    static const map<string, vector<string>> courseCatalog = {
-        {"Computer Science", {"C++", "Data Structures", "Databases", "Operating Systems", "Networks"}},
-        {"Electrical Engineering", {"Circuit Analysis", "Electromagnetics", "Digital Systems", "Control Systems"}},
-        {"Business Administration", {"Accounting", "Finance", "Organizational Behavior", "Business Ethics"}},
-        {"Mechanical Engineering", {"Thermodynamics", "Fluid Mechanics", "Dynamics", "Materials Science"}},
-        {"Civil Engineering", {"Statics", "Structural Analysis", "Geotechnical Engineering", "Hydraulics"}},
-        {"Pharmacy", {"Pharmacology", "Pharmaceutics", "Medicinal Chemistry", "Clinical Pharmacy"}},
-        {"Marketing", {"Principles of Marketing", "Consumer Behavior", "Digital Marketing", "Brand Management"}}
+static const map<string, vector<CourseInfo>>& getCourseCatalog() 
+{
+    static const map<string, vector<CourseInfo>> courseCatalog = {
+
+        {"Computer Science", {
+            CourseInfo("C++", 3),
+            CourseInfo("Data Structures", 3),
+            CourseInfo("Databases", 3),
+            CourseInfo("Operating Systems", 3),
+            CourseInfo("Networks", 3)
+        }},
+
+        {"Electrical Engineering", {
+            CourseInfo("Circuit Analysis", 3),
+            CourseInfo("Electromagnetics", 3),
+            CourseInfo("Digital Systems", 3),
+            CourseInfo("Control Systems", 3)
+        }},
+
+        {"Business Administration", {
+            CourseInfo("Accounting", 3),
+            CourseInfo("Finance", 3),
+            CourseInfo("Organizational Behavior", 3),
+            CourseInfo("Business Ethics", 3)
+        }},
+
+        {"Mechanical Engineering", {
+            CourseInfo("Thermodynamics", 3),
+            CourseInfo("Fluid Mechanics", 3),
+            CourseInfo("Dynamics", 3),
+            CourseInfo("Materials Science", 3)
+        }},
+
+        {"Civil Engineering", {
+            CourseInfo("Statics", 3),
+            CourseInfo("Structural Analysis", 3),
+            CourseInfo("Geotechnical Engineering", 3),
+            CourseInfo("Hydraulics", 3)
+        }},
+
+        {"Pharmacy", {
+            CourseInfo("Pharmacology", 3),
+            CourseInfo("Pharmaceutics", 3),
+            CourseInfo("Medicinal Chemistry", 3),
+            CourseInfo("Clinical Pharmacy", 3)
+        }},
+
+        {"Marketing", {
+            CourseInfo("Principles of Marketing", 3),
+            CourseInfo("Consumer Behavior", 3),
+            CourseInfo("Digital Marketing", 3),
+            CourseInfo("Brand Management", 3)
+        }}
     };
 
     return courseCatalog;
@@ -165,7 +209,7 @@ void instructor::viewCoursesForMajor(const string& major) {
 
     cout << "\n--- Courses for Major: " << selectedMajor << " ---\n";
     for (const auto& course : entry->second) {
-        cout << "- " << course << "\n";
+        cout << "- " << course.courseName << " (" << course.creditHours << " credits)\n";
     }
 }
 
@@ -215,7 +259,7 @@ void instructor::viewStudentCourses(vector<user*>& users) {
         cout << "No courses enrolled.\n";
     } else {
         for (const auto& course : enrolledCourses) {
-            cout << "- " << course << "\n";
+            cout << "- " << course.courseName << " (" << course.creditHours << " credits)\n";
         }
     }
 }
@@ -278,7 +322,8 @@ void instructor::addCourse(vector<user*>& users) {
         cout << "\nCourses for " << studentMajor << ":\n";
         cout << "\n";
         for (size_t i = 0; i < catalogIt->second.size(); ++i) {
-            cout << (i + 1) << ". " << catalogIt->second[i] << "\n";
+            cout << (i + 1) << ". " 
+            << catalogIt->second[i].courseName << " (" << catalogIt->second[i].creditHours << " credits)\n";
         }
 
         // Prompt for course selection
@@ -301,7 +346,10 @@ void instructor::addCourse(vector<user*>& users) {
         }
 
         // Get the selected course name
-        string courseName = catalogIt->second[courseChoice - 1];
+        CourseInfo selectedCourse = catalogIt->second[courseChoice - 1];
+
+        string courseName = selectedCourse.courseName;
+        int creditHours = selectedCourse.creditHours;   
         if (selectedStudent->hasCourse(courseName)) {
             cout << "Student " << selectedStudent->getusername() << " already has the course: " << courseName << "\n";
             continue;
@@ -362,7 +410,7 @@ void instructor::removeCourse(vector<user*>& users) {
 
     cout << "\nCourses for " << selectedStudent->getusername() << ":\n";
     for (size_t i = 0; i < enrolledCourses.size(); ++i) {
-        cout << (i + 1) << ". " << enrolledCourses[i] << "\n";
+        cout << (i + 1) << ". " << enrolledCourses[i].courseName << " (" << enrolledCourses[i].creditHours << " credits)\n";
     }
 
     int courseChoice;
@@ -381,7 +429,7 @@ void instructor::removeCourse(vector<user*>& users) {
         return;
     }
 
-    string courseName = enrolledCourses[courseChoice - 1];
+    string courseName = enrolledCourses[courseChoice - 1].courseName;
     selectedStudent->removeCourse(courseName);
 
     bool courseStillAssigned = false;
@@ -443,12 +491,19 @@ void instructor::viewCourses(vector<user*>& users) {
 
     cout << "\nAvailable courses for " << selectedMajor << ":\n";
     for (const auto& course : catalogIt->second) {
-        cout << "- " << course << "\n";
+        cout << "- " << course.courseName << " (" << course.creditHours << " credits)\n";
     }
 
     vector<string> taughtForMajor;
     for (const auto& course : courses) {
-        if (find(catalogIt->second.begin(), catalogIt->second.end(), course) != catalogIt->second.end()) {
+        bool exists = false;
+        for (const auto& catalogCourse : catalogIt->second) {
+            if (catalogCourse.courseName == course) {
+                exists = true;
+                break;
+            }
+        }
+        if (exists) {
             taughtForMajor.push_back(course);
         }
     }

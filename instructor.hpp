@@ -4,6 +4,14 @@
 
 using namespace std;
 
+struct CourseInfo {
+    string courseName;
+    int creditHours;
+
+    CourseInfo(const string& name = "", int credits = 0)
+        : courseName(name), creditHours(credits) {}
+};
+
 class instructor : public user {
     
 private:

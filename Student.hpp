@@ -5,6 +5,15 @@
 #include <string>
 #include <vector>
 
+struct CourseGrade {
+    std::string courseName;
+    int grade;
+    int creditHours;
+
+    CourseGrade(const std::string& name = "", int g = -1, int credits = 0)
+        : courseName(name), grade(g), creditHours(credits) {}
+};
+
 class student : public user {
 public:
     student(std::string username, std::string password, std::string role, int ID,string major);
@@ -13,16 +22,16 @@ public:
     bool authenticate(const std::string& username, const std::string& password, std::vector<user*>& users);
     void logout() override;
     void showprofile() override;
-    void addCourse(std::string courseName);
+    void addCourse(std::string courseName, int creditHours = 0);
     bool hasCourse(const std::string& courseName) const;
     void removeCourse(std::string courseName);
-    const std::vector<std::string>& getEnrolledCourses() const;
+    const std::vector<CourseGrade>& getEnrolledCourses() const;
     void viewCourses();
     void showMenu(std::vector<user*>& users);
     std::string getPassword() override;
 
 private:
-    std::vector<std::string> enrolledCourses;  // List of courses the student is enrolled in
+    std::vector<CourseGrade> enrolledCourses;  // List of courses the student is enrolled in
 };
 
 #endif

@@ -112,34 +112,40 @@ void student::showprofile() {
     addLog("Student " + username + " viewed profile");
 }
 
-void student::addCourse(string courseName) {
+void student::addCourse(string courseName, int creditHours) {
     if (hasCourse(courseName)) {
         cout << "Student " << username << " is already enrolled in: " << courseName << endl;
         return;
     }
-    enrolledCourses.push_back(courseName);
+    enrolledCourses.push_back(CourseGrade(courseName, -1, creditHours));
     cout << "Student " << username << " added to course: " << courseName << endl;
 }
 
 bool student::hasCourse(const string& courseName) const {
-    return find(enrolledCourses.begin(), enrolledCourses.end(), courseName) != enrolledCourses.end();
+    for (const auto& course : enrolledCourses) {
+        if (course.courseName == courseName) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void student::removeCourse(string courseName) {
-    auto it = find(enrolledCourses.begin(), enrolledCourses.end(), courseName);
+    auto it = remove_if(enrolledCourses.begin(), enrolledCourses.end(),
+        [&](const CourseGrade& course) { return course.courseName == courseName; });
     if (it != enrolledCourses.end()) {
-        enrolledCourses.erase(it);
+        enrolledCourses.erase(it, enrolledCourses.end());
     }
 }
 
-const vector<string>& student::getEnrolledCourses() const {
+const vector<CourseGrade>& student::getEnrolledCourses() const {
     return enrolledCourses;
 }
 
 void student::viewCourses() {
     cout << "Courses for " << username << ":\n";
     for (const auto& course : enrolledCourses) {
-        cout << course << endl;
+        cout << course.courseName << " (" << course.creditHours << " credits)" << endl;
     }
     addLog("Student " + username + " viewed courses");
 }
