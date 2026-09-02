@@ -25,6 +25,7 @@ public:
     void addCourse(std::string courseName, int creditHours = 0);
     bool hasCourse(const std::string& courseName) const;
     void removeCourse(std::string courseName);
+    std::vector<CourseGrade>& getEnrolledCourses();
     const std::vector<CourseGrade>& getEnrolledCourses() const;
     void viewCourses();
     void showMenu(std::vector<user*>& users);

@@ -540,25 +540,129 @@ void instructor::viewStudents(vector<user*>& users) {
     }
 }
 
+
+void instructor::addGrade(vector<user*>& users) {
+    cout << "\n--- Students List ---\n";
+    vector<student*> studentList;
+    int studentCount = 0;
+
+    for (const auto& user : users) {
+        if (user->getRole() == "Student") {
+            student* std = dynamic_cast<student*>(user);
+            if (std != nullptr) {
+                studentList.push_back(std);
+                studentCount++;
+                cout << studentCount << ". " << std->getusername() << " (ID: " << std->getID() << ", Major: " << std->getMajor() << ")\n";
+            }
+        }
+    }
+
+    if (studentList.empty()) {
+        cout << "No students found in the system.\n";
+        return;
+    }
+
+    int choice;
+    cout << "\nSelect a student to add a grade for (1-" << studentCount << "): ";
+    cin >> choice;
+
+    while (cin.fail() || choice < 1 || choice > studentCount || hasExtraInputOnLine()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input! Please enter a number between 1 and " << studentCount << ": ";
+        cin >> choice;
+    }
+
+    student* selectedStudent = studentList[choice - 1];
+    auto& enrolledCourses = selectedStudent->getEnrolledCourses();
+    if (enrolledCourses.empty()) {
+        cout << "Student " << selectedStudent->getusername() << " has no courses to add a grade for.\n";
+        return;
+    }
+
+
+    //display courses for the selected student
+    cout << "\nCourses for " << selectedStudent->getusername() << ":\n";
+    for (size_t i = 0; i < enrolledCourses.size(); ++i) {
+
+        cout << (i + 1) << ". "
+             << enrolledCourses[i].courseName
+             << " (" << enrolledCourses[i].creditHours
+             << " credits)";
+
+        if (enrolledCourses[i].grade == -1) {
+            cout << " | Grade: Not assigned";
+        }
+        else {
+            cout << " | Grade: "
+                 << enrolledCourses[i].grade
+                 << "/100";
+        }
+
+        cout << "\n";
+    }
+
+
+    int courseChoice;
+    cout << "Select a course to add a grade for (1-" << enrolledCourses.size() << ") or 0 to cancel: ";
+    cin >> courseChoice;
+
+    while(cin.fail() || courseChoice < 0 || courseChoice > static_cast<int>(enrolledCourses.size()) || hasExtraInputOnLine()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input! Please enter a number between 0 and " << enrolledCourses.size() << ": ";
+        cin >> courseChoice;
+    }
+
+    if(courseChoice == 0) {
+        cout << "Operation cancelled.\n";
+        return;
+    }
+
+    int grade;
+    cout << "Enter the grade for " << enrolledCourses[courseChoice - 1].courseName << " (0-100): ";
+    cin >> grade;
+
+    while(cin.fail() || grade < 0 || grade > 100 || hasExtraInputOnLine()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input! Please enter a grade between 0 and 100: ";
+        cin >> grade;
+    }
+    
+    enrolledCourses[courseChoice - 1].grade = grade;
+    cout << "\nGrade added successfully!\n";
+    cout << "Student: " << selectedStudent->getusername() << "\n";
+    cout << "Course: "
+     << enrolledCourses[courseChoice - 1].courseName << "\n";
+    cout << "Grade: "
+     << enrolledCourses[courseChoice - 1].grade
+     << "/100\n";
+
+
+}
+
+
 void instructor::showMenu(vector<user*>& users) {
     int choice;
     do {
         cout << "\nInstructor Menu:\n";
         cout << "1. Add Course\n";
         cout << "2. Remove Course\n";
-        cout << "3. View Courses for Major\n";
-        cout << "4. View Student Courses\n";
-        cout << "5. View Students\n";
-        cout << "6. List All Majors\n";
-        cout << "7. Show Profile\n";
+        cout << "3. add Grades to a Student\n";
+        cout << "4. View Courses for Major\n";
+        cout << "5. View Student Courses\n";
+        cout << "6. View Students\n";
+        cout << "7. List All Majors\n";
+        cout << "8. Show Profile\n";
         cout << "8. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         
-        if(cin.fail() || choice < 1 || choice > 8 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 9 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 8.\n";
+            cout << "Invalid input! Please enter a number between 1 and 9.\n";
             continue;  // ask for input again
         }
 
@@ -572,28 +676,31 @@ void instructor::showMenu(vector<user*>& users) {
                 break;
             }
             case 3:{
+                addGrade(users);
+            }
+            case 4:{
                 viewCoursesForMajor(users[0]->getMajor());
                 break; 
                 }
-            case 4:
+            case 5:
                 viewStudentCourses(users);
                 break;   
-            case 5:
+            case 6:
                 viewStudents(users);
                 break;
-            case 6:
+            case 7:
                 listAllMajors();
                 break;
-            case 7:
+            case 8:
                 showprofile();
                 break;
-            case 8:
+            case 9:
                 logout();
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";
         }
-    } while (choice != 8);
+    } while (choice != 9);
 }
 
 string instructor::getPassword() {

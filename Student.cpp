@@ -142,6 +142,10 @@ const vector<CourseGrade>& student::getEnrolledCourses() const {
     return enrolledCourses;
 }
 
+std::vector<CourseGrade>& student::getEnrolledCourses() {
+    return enrolledCourses;
+}
+
 void student::viewCourses() {
     cout << "Courses for " << username << ":\n";
     for (const auto& course : enrolledCourses) {

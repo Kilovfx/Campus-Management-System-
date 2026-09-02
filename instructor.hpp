@@ -24,6 +24,7 @@ public:
     void logout() override;
     void showprofile() override;
     void addCourse(vector<user*>& users);
+    void addGrade(vector<user*>& users); 
     void removeCourse(vector<user*>& users);
     void viewCourses(vector<user*>& users);
     void viewStudents(vector<user*>& users);
