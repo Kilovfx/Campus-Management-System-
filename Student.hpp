@@ -4,13 +4,15 @@
 #include "user.hpp"  // Include the base class header
 #include <string>
 #include <vector>
+#include <cmath>
+
 
 struct CourseGrade {
     std::string courseName;
-    int grade;
-    int creditHours;
+    double grade;
+    double creditHours;
 
-    CourseGrade(const std::string& name = "", int g = -1, int credits = 0)
+    CourseGrade(const std::string& name = "", double g = -1, double credits = 0)
         : courseName(name), grade(g), creditHours(credits) {}
 };
 
@@ -27,9 +29,12 @@ public:
     void removeCourse(std::string courseName);
     std::vector<CourseGrade>& getEnrolledCourses();
     const std::vector<CourseGrade>& getEnrolledCourses() const;
+    void ShowGrades();
     void viewCourses();
     void showMenu(std::vector<user*>& users);
     std::string getPassword() override;
+
+    double ConvertGradeToGPA(double grade); 
 
 private:
     std::vector<CourseGrade> enrolledCourses;  // List of courses the student is enrolled in

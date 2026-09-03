@@ -6,6 +6,7 @@
 #include <limits>
 #include <thread>
 #include <chrono>
+#include <iomanip>  // For std::setprecision
 #ifdef _WIN32
     #include <conio.h>
 #else
@@ -154,21 +155,57 @@ void student::viewCourses() {
     addLog("Student " + username + " viewed courses");
 }
 
+void student::ShowGrades(){
+
+     cout << "\n-----------------------------\n";
+     cout << "Grades for: " << username << endl;
+     cout << "ID: " << ID << endl;
+     cout << "Major: " << major << endl;
+     cout << "-----------------------------\n";
+
+     if(enrolledCourses.empty()){
+        cout << "No courses enrolled yet.\n";
+        return;
+     }
+
+     double totalPoints = 0;
+     int totalCredit = 0;
+
+     for (auto &course : enrolledCourses) {
+         cout << "Course: [ " << course.courseName << " | " << course.creditHours << " credits ]" << ", Grade: ";
+         if (course.grade == -1) {
+             cout << "Not graded yet";
+         } else {
+             cout << course.grade;
+             totalPoints += ConvertGradeToGPA(course.grade) * course.creditHours;
+             totalCredit += course.creditHours;
+         }
+            cout << endl;
+     }
+     if (totalCredit > 0) {
+         double gpa = totalPoints / totalCredit;
+         cout << "-----------------------------\n";
+         cout << "Total GPA: " << fixed << setprecision(2) << gpa << endl;
+     }
+}
+
+
 void student::showMenu(std::vector<user*>& users) {
     int choice;
     do {
         cout << "\nStudent Menu:\n";
         cout << "1. View Courses\n";
-        cout << "2. Show Profile\n";
-        cout << "3. Logout\n";
+        cout << "2. Show Grades\n";
+        cout << "3. Show Profile\n";
+        cout << "4. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         cout << "\n";
         
-        if(cin.fail() || choice < 1 || choice > 3 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 4 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 3.\n";
+            cout << "Invalid input! Please enter a number between 1 and 4.\n";
             continue;  // ask for input again
         }
 
@@ -177,15 +214,18 @@ void student::showMenu(std::vector<user*>& users) {
                 viewCourses();
                 break;
             case 2:
-                showprofile();
+                ShowGrades();
                 break;
             case 3:
+                showprofile();
+                break;
+            case 4:
                 logout();
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";
         }
-    } while (choice != 3);
+    } while (choice != 4);
 }
 
 string student::getPassword() {
@@ -234,4 +274,27 @@ string student::getPassword() {
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);  // Restore terminal settings
 #endif
     return password;  // Return the password
+}
+
+
+
+double student::ConvertGradeToGPA(double grade) {
+    if (grade >= 95)
+        return 5.0;
+    else if (grade >= 90)
+        return 4.5;
+    else if (grade >= 85)
+        return 4.0;
+    else if (grade >= 80)
+        return 3.5;
+    else if (grade >= 75)
+        return 3.0;
+    else if (grade >= 70)
+        return 2.5;
+    else if (grade >= 65)
+        return 2.0;
+    else if (grade >= 60)
+        return 1.5;
+    else
+        return 0.0;
 }
