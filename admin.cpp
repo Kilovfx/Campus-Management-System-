@@ -276,37 +276,54 @@ void admin::lockUser(vector<user*>& users) {
 
 void admin::unlockUser(vector<user*>& users) {
     string unlockedusername;
+
     ListAll(users);
-    cout << "input the user you want to unlock : ";
-    cin >> unlockedusername;
 
-    if(isAdminRole(unlockedusername)) {
-        cout << "Cannot unlock admin account!\n";
-        if (hasExtraInputOnLine()) {
-            cout << "Invalid input: spaces are not allowed in usernames.\n";
-            unlockedusername.clear();
-        }
-    }
+    while (true) {
 
-    user* selectedUser = nullptr;
-    for (auto u : users) {
-        if (u->getusername() == unlockedusername) {
-            selectedUser = u;
-            if(selectedUser->isActive()){
-                cout <<" account already unlocked!\n";
-            }
+        cout << "Input the user you want to unlock (0 to exit): ";
+        cin >> unlockedusername;
+
+        if (unlockedusername == "0") {
+            cout << "Exiting unlock...\n";
             break;
         }
-    }
 
-    if (selectedUser == nullptr) {
-        cout << "User not found.\n";
-    } else {
-        if (!selectedUser->isActive()) {
-            selectedUser->resetFailedAttempts(); // Reset failed attempts
-            cout << "User " << unlockedusername << " has been unlocked.\n";
-            addLog("Unlocked user: " + unlockedusername);
-        } 
+        if (hasExtraInputOnLine()) {
+            cout << "Invalid input: spaces are not allowed in usernames.\n";
+            continue;
+        }
+
+        user* selectedUser = nullptr;
+
+        for (auto u : users) {
+            if (u->getusername() == unlockedusername) {
+                selectedUser = u;
+                break;
+            }
+        }
+
+        if (selectedUser == nullptr) {
+            cout << "User not found.\n";
+            continue;
+        }
+
+        if (selectedUser == this || isAdminRole(selectedUser->getRole())) {
+            cout << "Cannot unlock admin account!\n";
+            continue;
+        }
+
+        if (selectedUser->isActive()) {
+            cout << "Account already unlocked!\n";
+            continue;
+        }
+
+        selectedUser->resetFailedAttempts();
+
+        cout << "User " << unlockedusername << " has been unlocked.\n";
+        addLog("Unlocked user: " + unlockedusername);
+
+        break;
     }
 }
 
