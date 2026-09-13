@@ -1,5 +1,6 @@
 #include "user.hpp"
 #include <iostream>
+#include <map>
 #include <vector>
 
 using namespace std;
@@ -18,7 +19,7 @@ private:
     vector<CourseInfo> courses; // List of courses the instructor is teaching
 public:
     instructor(string username, string password, string role, int ID,string major);
-    
+    static const map<string, vector<CourseInfo>>& getCourseCatalog();
     void login(vector<user*>& users) override;
     bool authenticate(const string& username, const string& password, vector<user*>& users);
     void logout() override;
@@ -32,5 +33,8 @@ public:
     void viewCoursesForMajor(const string& major);
     void viewStudentCourses(vector<user*>& users);
     void showMenu(vector<user*>& users);
-    string getPassword() override;
+    void assignCourse(const CourseInfo& course);
+    void clearCourses();
+    const vector<CourseInfo>& getCourses() const;
+    string encryptpass() override;
 };

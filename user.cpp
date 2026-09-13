@@ -114,7 +114,7 @@ void user::setRole(string& newRole){
     role = newRole;
 }
 
-void user::setPassword(string& newPassword){
+void user::setPassword(const string& newPassword){
     password = newPassword;
 }
 
@@ -122,7 +122,7 @@ void user::setMajor(string& newMajor){
     major = newMajor;
 }
 
-string user::getPassword(){
+string user::encryptpass(){
     string password = "";
     char ch;
 

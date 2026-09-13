@@ -6,20 +6,21 @@
 #include "student.hpp"
 #include "admin.hpp"
 #include "instructor.hpp"
+#include "Password.hpp"
 
 using namespace std;
 
 int main() {
     
     vector<user*> users;  // قائمة لتخزين المستخدمين
-    admin* admin1 = new admin("admin", "123", "admin", 1350);  // إنشاء حساب admin
+    admin* admin1 = new admin("admin", Hashpassword("123"), "admin", 1350);  // إنشاء حساب admin
     users.push_back(admin1);
     
     // Temporary test accounts
-    instructor* instructor1 = new instructor("ahmed", "123", "Instructor", 5001, "Computer Science");
+    instructor* instructor1 = new instructor("ahmed", Hashpassword("123"), "Instructor", 5001, "Computer Science");
     users.push_back(instructor1);
     
-    student* student1 = new student("salem", "123", "Student", 3001, "Computer Science");
+    student* student1 = new student("salem", Hashpassword("123"), "Student", 3001, "Computer Science");
     users.push_back(student1);
 
     int choice;

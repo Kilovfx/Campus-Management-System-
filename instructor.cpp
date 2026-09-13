@@ -1,5 +1,6 @@
 #include "instructor.hpp"
 #include "student.hpp"
+#include "Password.hpp"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -16,6 +17,11 @@
 #endif
 
 instructor::instructor(string username, string password, string role, int ID, string major):user(username, password, role, ID, major,false) {}
+
+const vector <CourseInfo>& instructor::getCourses() const {
+    return courses;
+};
+
 
 void instructor::login(vector<user*>& users) {
     string inputUsername, inputPassword;
@@ -45,7 +51,7 @@ void instructor::login(vector<user*>& users) {
         }
 
         cout << "Enter password: ";
-        inputPassword = getPassword();
+        inputPassword = encryptpass();
 
         if (account != nullptr && authenticate(inputUsername, inputPassword, users)) {
             break;
@@ -71,7 +77,6 @@ void instructor::login(vector<user*>& users) {
 
     if (account != nullptr) {
         this->username = inputUsername;
-        this->password = inputPassword;
         cout << username << " logged in successfully as an Instructor.\n";
         addLog("Instructor logged in");
     } else {
@@ -81,7 +86,7 @@ void instructor::login(vector<user*>& users) {
 
 bool instructor::authenticate(const string& username, const string& password, vector<user*>& users) {
     for (const auto& user : users) {
-        if (user->getusername() == username && user->getpassword() == password && user->getRole() == "Instructor") {
+        if (user->getusername() == username && verifypassword(password,user->getpassword()) && user->getRole() == "Instructor") {
             return true;
         }
     }
@@ -105,7 +110,7 @@ void instructor::showprofile() {
 
 
 
-static const map<string, vector<CourseInfo>>& getCourseCatalog() 
+const map<string, vector<CourseInfo>>& instructor::getCourseCatalog()
 {
     static const map<string, vector<CourseInfo>> courseCatalog = {
 
@@ -646,6 +651,30 @@ void instructor::addGrade(vector<user*>& users) {
 
 }
 
+void instructor::assignCourse(const CourseInfo& course) {
+    if (courses.size() >= 2) {
+        cout << "Instructor already has the maximum of 2 courses.\n";
+        return;
+    }
+
+    for (const auto& existingCourse : courses) {
+        if (existingCourse.courseName == course.courseName) {
+            cout << "Instructor already has this course.\n";
+            return;
+        }
+    }
+
+    courses.push_back(course);
+
+    cout << "Course " << course.courseName
+         << " assigned to instructor successfully.\n";
+}
+
+void instructor::clearCourses() {
+    courses.clear();
+}
+
+
 
 void instructor::showMenu(vector<user*>& users) {
     int choice;
@@ -708,7 +737,7 @@ void instructor::showMenu(vector<user*>& users) {
     } while (choice != 9);
 }
 
-string instructor::getPassword() {
+string instructor::encryptpass() {
     string password = "";
     char ch;
 

@@ -32,7 +32,7 @@ public:
     void ShowGrades();
     void viewCourses();
     void showMenu(std::vector<user*>& users);
-    std::string getPassword() override;
+    std::string encryptpass() override;
 
     double ConvertGradeToGPA(double grade); 
 

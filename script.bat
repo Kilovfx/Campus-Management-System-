@@ -8,7 +8,7 @@ del /f /q "%SCRIPT_DIR%main.exe"
 
 REM Rebuild the project
 echo Rebuilding the project...
-g++ "%SCRIPT_DIR%main.cpp" "%SCRIPT_DIR%admin.cpp" "%SCRIPT_DIR%Student.cpp" "%SCRIPT_DIR%instructor.cpp" "%SCRIPT_DIR%user.cpp" -o "%SCRIPT_DIR%main.exe"
+g++ "%SCRIPT_DIR%main.cpp" "%SCRIPT_DIR%admin.cpp" "%SCRIPT_DIR%Student.cpp" "%SCRIPT_DIR%instructor.cpp" "%SCRIPT_DIR%user.cpp" "%SCRIPT_DIR%password.cpp" "%SCRIPT_DIR%bcrypt.cpp" "%SCRIPT_DIR%blowfish.cpp" -o "%SCRIPT_DIR%main.exe"
 
 REM Check if the build was successful
 if exist "%SCRIPT_DIR%main.exe" (

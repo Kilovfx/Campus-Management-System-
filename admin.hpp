@@ -20,6 +20,7 @@ class admin : public user{
         ASSIGN_ROLE,
         CHANGE_PASSWORD,
         CHANGE_MAJOR,
+        ASSIGN_COURSE,
         LOCK_UNLOCK_USER,
         VIEW_USERS,
         VIEW_LOGS,
@@ -45,9 +46,9 @@ class admin : public user{
     void asignrole(vector<user*>& users,string username,string newRole);
     void changepassword(vector<user*>& users);
     void changeMajor(vector<user*>& users);
-    string getPassword() override;
+    void assignCourseForInstructor(vector<user*>& users);
+    string encryptpass() override;
 
 
 };
 #endif
-

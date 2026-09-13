@@ -1,6 +1,7 @@
 #include "admin.hpp"
 #include "Student.hpp"
 #include "instructor.hpp" 
+#include "Password.hpp"
 #include <iostream>
 #include <string>
 #include <thread>
@@ -63,7 +64,7 @@ admin::admin(string username, string password, string role, int ID) : user(usern
 }
 
 bool admin::authenticate(string username,string password){
-    return (username == this->username && password == this->password); // check for the credentials
+    return (username == this->username && verifypassword(password,this->password)); // check for the credentials
 }
 
 void admin::showprofile(){
@@ -82,7 +83,7 @@ void admin::showprofile(){
 
 
 
-string admin::getPassword() {
+string admin::encryptpass() {
     string password = "";
     char ch;
 
@@ -147,7 +148,7 @@ void admin::login(vector<user*>& users){
         username.clear();
     }
     cout<<"enter the password: ";
-    password = getPassword();
+    password = encryptpass();
     
     while(!authenticate(username,password)){
         attempts++;
@@ -167,13 +168,12 @@ void admin::login(vector<user*>& users){
             username.clear();
         }
         cout<<"enter the password: ";
-        password = getPassword();
+        password = encryptpass();
     }
 
     if(authenticate(username,password)){
     cout << "User : " << username <<" logged in successfully!\n";
     this-> username = username;
-    this-> password = password;
     addLog("Admin logged in"); // count the logs for the admin 
     }
     else{
@@ -202,7 +202,21 @@ void admin::ListAll(vector<user*>& users){
         if(user->getRole() == "Student" || user->getRole() == "Instructor"){
             string major = user->getMajor();
 
-            cout << " | Major: [" << major << "]";
+            size_t courseCount = 0;
+            if (user->getRole() == "Student") {
+                student* selectedStudent = dynamic_cast<student*>(user);
+                if (selectedStudent != nullptr) {
+                    courseCount = selectedStudent->getEnrolledCourses().size();
+                }
+            } else {
+                instructor* selectedInstructor = dynamic_cast<instructor*>(user);
+                if (selectedInstructor != nullptr) {
+                    courseCount = selectedInstructor->getCourses().size();
+                }
+            }
+
+            cout << " | Major: [" << major << "]"
+                 << " | Courses: " << courseCount;
         }
 
         cout << endl;
@@ -331,6 +345,7 @@ void admin::unlockUser(vector<user*>& users) {
 
 void admin::createuser(std::vector<user*>& users, std::string username, std::string password, std::string role, std::string major) {
     user* newUser = nullptr;
+    string hashedPassword = Hashpassword(password);
 
     try {
         // Check if username already exists
@@ -350,12 +365,12 @@ void admin::createuser(std::vector<user*>& users, std::string username, std::str
             }
             if (role == "Student"){
 
-            newUser = new student(username, password, role, nextID, major);
+                newUser = new student(username, hashedPassword, role, nextID, major);
 
             }
             if(role == "Instructor"){
 
-                newUser = new instructor(username,password , role , nextID , major);
+                newUser = new instructor(username, hashedPassword, role , nextID , major);
 
             }
 
@@ -503,7 +518,7 @@ void admin::asignrole(vector<user*>& users,string username,string newRole){
             (*it)->setRole(newRole);
             cout <<"Role of user: "<< username << " has been updated to : "<< newRole<<"\n";
             found = true;
-            addLog("Assigned new role to user: " + username);
+            addLog("Changed role for user " + username + " to " + newRole);
             break;
         }
         ++it;
@@ -562,9 +577,9 @@ void admin::changepassword(vector<user*>& users){
     // Verify admin's own password first
     string adminPassword;
     cout << "Enter your admin password to confirm: ";
-    adminPassword = getPassword();
+    adminPassword = encryptpass();
     
-    if(adminPassword != this->password) {
+    if(!verifypassword(adminPassword,this->password)) {
         cout << "Invalid password!\n";
         addLog("Failed password change attempt for user: " + targetUsername + " (invalid admin password)");
         return;
@@ -575,18 +590,18 @@ void admin::changepassword(vector<user*>& users){
     while (true)
     {
         cout << "Enter the new password for " << targetUsername << ": ";
-        newpassword = getPassword();
+        newpassword = encryptpass();
 
-        if (newpassword == targetUser->getpassword()) {
+        if (verifypassword(newpassword ,targetUser->getpassword())) {
             cout << "New password cannot be the same as the current password. Please try again.\n";
             continue;
         }
 
         cout << "Enter again to confirm: ";
-        confirmpassword = getPassword();
+        confirmpassword = encryptpass();
         
         if(newpassword == confirmpassword){
-            targetUser->setPassword(newpassword);
+            targetUser->setPassword(Hashpassword(newpassword));
             cout << "Password for user " << targetUsername << " has been changed successfully\n";
             addLog("Changed password for user: " + targetUsername);
             break;
@@ -604,7 +619,8 @@ void admin::changeMajor(vector<user*>& users){
     cout << "Enter your choice: ";
     cin >> roleChoice;
 
-    while (cin.fail() || (roleChoice != 1 && roleChoice != 2) || hasExtraInputOnLine()) {
+    while (cin.fail() || (roleChoice != 1 && roleChoice != 2) ||
+           hasExtraInputOnLine()) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Invalid input! Please enter 1 for Student or 2 for Instructor: ";
@@ -661,12 +677,163 @@ void admin::changeMajor(vector<user*>& users){
         }
         cout << "Invalid major. Please choose from the list below:\n";
         printAllowedMajors();
+    } 
+
+    size_t removedCourseCount = 0;
+    if (selectedRole == "Instructor") {
+        instructor* selectedInstructor = dynamic_cast<instructor*>(selectedUser);
+        if (selectedInstructor != nullptr) {
+            removedCourseCount = selectedInstructor->getCourses().size();
+            selectedInstructor->clearCourses();
+        }
     }
 
     selectedUser->setMajor(newMajor);
     cout << "Major updated successfully for " << selectedUser->getusername() << "\n";
-    addLog("Changed major for " + selectedRole + ": " + selectedUser->getusername());
+    addLog("Changed major for " + selectedRole + " " +
+           selectedUser->getusername() + " to " + newMajor);
+    if (removedCourseCount > 0) {
+        addLog("Removed " + to_string(removedCourseCount) +
+               " assigned course(s) from instructor " +
+               selectedUser->getusername() + " after major change");
+    }
 }
+
+
+void admin::assignCourseForInstructor(vector<user*>& users)
+{
+    vector<instructor*> instructors;
+
+    cout << "\n--- Instructors List ---\n";
+
+    for (const auto& user : users)
+    {
+        if (user->getRole() == "Instructor")
+        {
+            instructor* currentInstructor =
+                dynamic_cast<instructor*>(user);
+
+            if (currentInstructor != nullptr)
+            {
+                instructors.push_back(currentInstructor);
+
+                cout << instructors.size()
+                     << ". " << currentInstructor->getusername()
+                     << " (ID: " << currentInstructor->getID()
+                     << ", Major: " << currentInstructor->getMajor()
+                     << ")\n";
+            }
+        }
+    }
+
+    if (instructors.empty())
+    {
+        cout << "No instructors found.\n";
+        return;
+    }
+
+    int instructorChoice;
+    instructor* selectedInstructor = nullptr;
+
+    while (selectedInstructor == nullptr)
+    {
+        cout << "\nSelect an instructor (1-"
+             << instructors.size()
+             << ") or 0 to cancel: ";
+
+        cin >> instructorChoice;
+
+        if (cin.fail())
+        {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid choice. Please enter a number.\n";
+            continue;
+        }
+
+        if (instructorChoice == 0)
+            return;
+
+        if (instructorChoice < 1 ||
+            instructorChoice > static_cast<int>(instructors.size()))
+        {
+            cout << "Invalid choice. Please choose an instructor from the list.\n";
+            continue;
+        }
+
+        selectedInstructor = instructors[instructorChoice - 1];
+    }
+
+        const auto& catalog =
+            instructor::getCourseCatalog();
+
+    auto majorIt = catalog.find(selectedInstructor->getMajor());
+
+        if (majorIt == catalog.end())
+        {
+            cout << "No courses found for this major.\n";
+            return;
+        }
+
+        const auto& currentCourses =
+            selectedInstructor->getCourses();
+
+        if (currentCourses.size() >= 2)
+        {
+            cout << "This instructor already has 2 courses.\n";
+            return;
+        }
+
+        cout << "\n--- Courses for "
+            << selectedInstructor->getMajor()
+            << " ---\n";
+
+        for (int i = 0; i < majorIt->second.size(); i++)
+        {
+            cout << i + 1 << ". "
+                << majorIt->second[i].courseName
+                << " (" << majorIt->second[i].creditHours
+                << " credits)\n";
+        }
+
+        int courseChoice;
+
+        while (true)
+        {
+            cout << "\nSelect a course (1-"
+                 << majorIt->second.size()
+                 << ") or 0 to cancel: ";
+
+            cin >> courseChoice;
+
+            if (cin.fail())
+            {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Invalid choice. Please enter a number.\n";
+                continue;
+            }
+
+            if (courseChoice == 0)
+                return;
+
+            if (courseChoice < 1 ||
+                courseChoice > static_cast<int>(majorIt->second.size()))
+            {
+                cout << "Invalid choice. Please choose a course from the list.\n";
+                continue;
+            }
+
+            CourseInfo selectedCourse =
+                majorIt->second[courseChoice - 1];
+
+            selectedInstructor->assignCourse(selectedCourse);
+            addLog("Assigned course " + selectedCourse.courseName +
+                   " to instructor " + selectedInstructor->getusername());
+            break;
+        }
+}
+
 
 void admin::Showmeniu(vector<user*>& users){
     int choice;
@@ -679,6 +846,7 @@ void admin::Showmeniu(vector<user*>& users){
         cout<<ASSIGN_ROLE<<". Assign role\n";
         cout<<CHANGE_PASSWORD<<". Change password\n";
         cout<<CHANGE_MAJOR<<". Change major\n";
+        cout<<ASSIGN_COURSE<<". Assign course to instructor\n";
         cout<<LOCK_UNLOCK_USER<<". Lock/Unlock user\n";
         cout<<VIEW_USERS<<". View users\n";
         cout<<VIEW_LOGS<<". View logs\n";
@@ -690,10 +858,10 @@ void admin::Showmeniu(vector<user*>& users){
         cout<<"\n";
         
         // Check if there are extra characters after the number
-        if(cin.fail() || choice < 1 || choice > 10 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 11 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 10.\n";
+            cout << "Invalid input! Please enter a number between 1 and 11.\n";
             continue;  // ask for input again
         }
 
@@ -749,7 +917,7 @@ void admin::Showmeniu(vector<user*>& users){
                 }
             }
 
-            if (role == "Student" | role == "Instructor") {
+            if (role == "Student" || role == "Instructor") {
                 printAllowedMajors();
                 while (true) {
                     cout << "Enter the major: ";
@@ -856,6 +1024,13 @@ void admin::Showmeniu(vector<user*>& users){
                 changeMajor(users);
             }
             break;
+
+            case ASSIGN_COURSE:
+            {
+                assignCourseForInstructor(users);
+            }
+            break;
+
             case LOCK_UNLOCK_USER:
             {
                 int lockChoice;

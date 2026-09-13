@@ -1,4 +1,5 @@
 #include "student.hpp"
+#include "Password.hpp"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -51,7 +52,7 @@ void student::login(vector<user*>& users) {
         }
 
         cout << "Enter password: ";
-        inputPassword = getPassword();
+        inputPassword = encryptpass();
 
         if (account != nullptr && authenticate(inputUsername, inputPassword, users)) {
             break;
@@ -77,7 +78,6 @@ void student::login(vector<user*>& users) {
 
     if (account != nullptr) {
         this->username = inputUsername;
-        this->password = inputPassword;
         cout << username << " logged in successfully.\n";
         addLog("Student logged in");
     } else {
@@ -90,7 +90,7 @@ void student::login(vector<user*>& users) {
 
 bool student::authenticate(const string& username, const string& password, vector<user*>& users) {
     for (const auto& u : users) {
-        if (u->getusername() == username && u->getpassword() == password && u->getRole() == "Student") {
+        if (u->getusername() == username && verifypassword(password,u->getpassword()) && u->getRole() == "Student") {
             return true;
         }
     }
@@ -110,7 +110,7 @@ void student::showprofile() {
     // Date of account creation
     char* dt = ctime(&creationDate);
     cout << "Account created on: " << dt << endl;
-    addLog("Student " + username + " viewed profile");
+    addLog("Viewed profile");
 }
 
 void student::addCourse(string courseName, int creditHours) {
@@ -152,7 +152,7 @@ void student::viewCourses() {
     for (const auto& course : enrolledCourses) {
         cout << course.courseName << " (" << course.creditHours << " credits)" << endl;
     }
-    addLog("Student " + username + " viewed courses");
+    addLog("Viewed courses");
 }
 
 void student::ShowGrades(){
@@ -228,7 +228,7 @@ void student::showMenu(std::vector<user*>& users) {
     } while (choice != 4);
 }
 
-string student::getPassword() {
+string student::encryptpass() {
     string password = "";
     char ch;
 

@@ -64,9 +64,9 @@ class user{
 
     virtual void showprofile();
     void setRole(string& newRole);
-    void setPassword(string& newPassword);
+    void setPassword(const string& newPassword);
     void setMajor(string& newMajor);
-    virtual string getPassword();
+    virtual string encryptpass();
     virtual ~user() {}
 
 };
