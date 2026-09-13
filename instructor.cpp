@@ -97,6 +97,7 @@ void instructor::showprofile() {
     cout << "Username: " << username << endl;
     cout << "Role: " << role << endl;
     cout << "ID: " << ID << endl;
+    cout << "Major: " << major << endl;
     // Date of account creation
     char* dt = ctime(&creationDate);
     cout << "Account created on: " << dt << endl;

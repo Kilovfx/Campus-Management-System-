@@ -199,7 +199,7 @@ void admin::ListAll(vector<user*>& users){
              << " | ID: " << user->getID()
              << " | Role: " << user->getRole();
 
-        if(user->getRole() == "Student"){
+        if(user->getRole() == "Student" || user->getRole() == "Instructor"){
             string major = user->getMajor();
 
             cout << " | Major: [" << major << "]";
@@ -342,18 +342,23 @@ void admin::createuser(std::vector<user*>& users, std::string username, std::str
             }
         }
 
-        if (role == "Instructor") {
-            newUser = new instructor(username, password, role, nextID, major);
-            nextID++;
-        } 
-
-        else if (role == "Student") {
+          if (role == "Student" || role == "Instructor") {
             if (!isMajorAllowed(major)) {
                 cout << "Invalid major. Please choose from the list below:\n";
                 printAllowedMajors();
                 return;
             }
+            if (role == "Student"){
+
             newUser = new student(username, password, role, nextID, major);
+
+            }
+            if(role == "Instructor"){
+
+                newUser = new instructor(username,password , role , nextID , major);
+
+            }
+
             nextID++;
         } 
 
@@ -593,46 +598,59 @@ void admin::changepassword(vector<user*>& users){
 }
 
 void admin::changeMajor(vector<user*>& users){
-    // List students only
-    cout << "\n--- List of Students ---\n";
-    vector<student*> studentList;
-    int studentCount = 0;
+    int roleChoice;
+    cout << "1. Change a student's major\n";
+    cout << "2. Change an instructor's major\n";
+    cout << "Enter your choice: ";
+    cin >> roleChoice;
+
+    while (cin.fail() || (roleChoice != 1 && roleChoice != 2) || hasExtraInputOnLine()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input! Please enter 1 for Student or 2 for Instructor: ";
+        cin >> roleChoice;
+    }
+
+    const string selectedRole = roleChoice == 1 ? "Student" : "Instructor";
+    cout << "\n--- List of " << selectedRole << "s ---\n";
+    vector<user*> matchingUsers;
 
     for (const auto& user : users) {
-        if (user->getRole() == "Student") {
-            student* std = dynamic_cast<student*>(user);
-            if (std != nullptr) {
-                studentList.push_back(std);
-                studentCount++;
-                cout << studentCount << ". " << std->getusername() << " (ID: " << std->getID() << ", Major: " << std->getMajor() << ")\n";
-            }
+        if (user->getRole() == selectedRole) {
+            matchingUsers.push_back(user);
+            cout << matchingUsers.size() << ". " << user->getusername()
+                 << " (ID: " << user->getID() << ", Major: "
+                 << user->getMajor() << ")\n";
         }
     }
 
-    if (studentList.empty()) {
-        cout << "No students found in the system.\n";
+    if (matchingUsers.empty()) {
+        cout << "No " << selectedRole << "s found in the system.\n";
         return;
     }
 
     int choice;
-    cout << "\nSelect a student to change major (1-" << studentCount << "): ";
+    cout << "\nSelect a " << selectedRole << " to change major (1-"
+         << matchingUsers.size() << "): ";
     cin >> choice;
 
-    while (cin.fail() || choice < 1 || choice > studentCount || hasExtraInputOnLine()) {
+    while (cin.fail() || choice < 1 ||
+           choice > static_cast<int>(matchingUsers.size()) ||
+           hasExtraInputOnLine()) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid input! Please enter a number between 1 and " << studentCount << ": ";
+        cout << "Invalid input! Please enter a number between 1 and "
+             << matchingUsers.size() << ": ";
         cin >> choice;
     }
 
-    student* selectedStudent = studentList[choice - 1];
+    user* selectedUser = matchingUsers[choice - 1];
 
-    cin.ignore();
     printAllowedMajors();
     string newMajor;
-    const string currentMajor = selectedStudent->getMajor();
+    const string currentMajor = selectedUser->getMajor();
     while (true) {
-        cout << "Enter the new major for " << selectedStudent->getusername() << ": ";
+        cout << "Enter the new major for " << selectedUser->getusername() << ": ";
         getline(cin, newMajor);
         if (newMajor == currentMajor) {
             cout << "New major cannot be the same as the current major. Please choose a different major.\n";
@@ -645,9 +663,9 @@ void admin::changeMajor(vector<user*>& users){
         printAllowedMajors();
     }
 
-    selectedStudent->setMajor(newMajor);
-    cout << "Major updated successfully for " << selectedStudent->getusername() << "\n";
-    addLog("Changed major for student: " + selectedStudent->getusername());
+    selectedUser->setMajor(newMajor);
+    cout << "Major updated successfully for " << selectedUser->getusername() << "\n";
+    addLog("Changed major for " + selectedRole + ": " + selectedUser->getusername());
 }
 
 void admin::Showmeniu(vector<user*>& users){
@@ -731,7 +749,7 @@ void admin::Showmeniu(vector<user*>& users){
                 }
             }
 
-            if (role == "Student") {
+            if (role == "Student" | role == "Instructor") {
                 printAllowedMajors();
                 while (true) {
                     cout << "Enter the major: ";
