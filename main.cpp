@@ -3,6 +3,7 @@
 #include <fstream>
 #include <limits>
 #include "user.hpp"
+#include "database.hpp"
 #include "student.hpp"
 #include "admin.hpp"
 #include "instructor.hpp"
@@ -11,6 +12,15 @@
 using namespace std;
 
 int main() {
+
+    Database db;
+
+    if(!db.connect()){
+        cout <<" Database connection failed!\n";
+    }
+    else{
+        cout <<"Database connection successful!\n";
+    }
     
     vector<user*> users;  // قائمة لتخزين المستخدمين
     admin* admin1 = new admin("admin", Hashpassword("123"), "admin", 1350);  // إنشاء حساب admin
