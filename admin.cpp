@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <cctype>
 #include <limits>
 #ifdef _WIN32
     #include <conio.h>
@@ -55,7 +56,8 @@ static bool isAdminRole(const string& role) {
 
 int admin::nextID = 3170;
 
-admin::admin(string username, string password, string role, int ID) : user(username, password, role, nextID, "",false) {
+admin::admin(string username, string password, string role, int ID)
+    : user(username, password, role, nextID, "", "", "", false) {
     this->username = username;
     this->password = password;
     this->role = role;
@@ -343,11 +345,25 @@ void admin::unlockUser(vector<user*>& users) {
 
 
 
-void admin::createuser(std::vector<user*>& users, std::string username, std::string password, std::string role, std::string major) {
+void admin::createuser(std::vector<user*>& users, std::string username, std::string password,
+                       std::string role, std::string first_name, std::string last_name,
+                       std::string major) {
     user* newUser = nullptr;
     string hashedPassword = Hashpassword(password);
 
     try {
+        auto isBlank = [](const string& value) {
+            return value.empty() || all_of(value.begin(), value.end(), [](unsigned char character) {
+                return isspace(character) != 0;
+            });
+        };
+
+        if (isBlank(first_name) || isBlank(last_name)) {
+            cout << "Error: First name and last name cannot be empty.\n";
+            addLog("Failed to create user: " + username + " - Name is empty");
+            return;
+        }
+
         // Check if username already exists
         for (const auto& user : users) {
             if (user->getusername() == username) {
@@ -365,12 +381,14 @@ void admin::createuser(std::vector<user*>& users, std::string username, std::str
             }
             if (role == "Student"){
 
-                newUser = new student(username, hashedPassword, role, nextID, major);
+                newUser = new student(username, hashedPassword, role, nextID,
+                                       first_name, last_name, major);
 
             }
             if(role == "Instructor"){
 
-                newUser = new instructor(username, hashedPassword, role , nextID , major);
+                newUser = new instructor(username, hashedPassword, role, nextID,
+                                         first_name, last_name, major);
 
             }
 
@@ -877,7 +895,7 @@ void admin::Showmeniu(vector<user*>& users){
             case CREATE_USER:
             {
 
-            string username,password,role,major;
+            string username,password,role,first_name,last_name,major;
             bool ValidRole = false;
 
             cout << "Enter username: ";
@@ -918,6 +936,30 @@ void admin::Showmeniu(vector<user*>& users){
             }
 
             if (role == "Student" || role == "Instructor") {
+                while (true) {
+                    cout << "Enter first name: ";
+                    getline(cin, first_name);
+                    if (!first_name.empty() &&
+                        any_of(first_name.begin(), first_name.end(), [](unsigned char character) {
+                            return !isspace(character);
+                        })) {
+                        break;
+                    }
+                    cout << "Invalid first name. Name cannot be empty.\n";
+                }
+
+                while (true) {
+                    cout << "Enter last name: ";
+                    getline(cin, last_name);
+                    if (!last_name.empty() &&
+                        any_of(last_name.begin(), last_name.end(), [](unsigned char character) {
+                            return !isspace(character);
+                        })) {
+                        break;
+                    }
+                    cout << "Invalid last name. Name cannot be empty.\n";
+                }
+
                 printAllowedMajors();
                 while (true) {
                     cout << "Enter the major: ";
@@ -930,7 +972,7 @@ void admin::Showmeniu(vector<user*>& users){
                 }
             }
             
-            createuser(users,username,password,role,major);
+            createuser(users, username, password, role, first_name, last_name, major);
 
             }
             break;

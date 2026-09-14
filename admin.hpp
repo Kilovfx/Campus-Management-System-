@@ -41,7 +41,8 @@ class admin : public user{
     void ListAll(vector<user*>& users);
     void Showmeniu(vector<user*>& users);
     bool authenticate(string username,string password);
-    void createuser(vector<user*>& users,string username,string password,string role,string major);
+    void createuser(vector<user*>& users, string username, string password, string role,
+                    string first_name, string last_name, string major);
     void deleteuser(vector<user*>& users,string username,string password); 
     void asignrole(vector<user*>& users,string username,string newRole);
     void changepassword(vector<user*>& users);

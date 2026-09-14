@@ -18,7 +18,8 @@ class instructor : public user {
 private:
     vector<CourseInfo> courses; // List of courses the instructor is teaching
 public:
-    instructor(string username, string password, string role, int ID,string major);
+    instructor(string username, string password, string role, int ID,
+               string first_name, string last_name, string major);
     static const map<string, vector<CourseInfo>>& getCourseCatalog();
     void login(vector<user*>& users) override;
     bool authenticate(const string& username, const string& password, vector<user*>& users);

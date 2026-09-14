@@ -11,11 +11,13 @@ using namespace std;
 
 static const int accountLockDurationSeconds = 60;
 
-user::user(string username, string password, string role, int ID, string major,bool locked) {
+user::user(string username, string password, string role, int ID,string first_name,string last_name,string major,bool locked) {
     this->username = username;
     this->password = password;
     this->role = role;
     this->ID = ID;
+    this->first_name = first_name;
+    this->last_name = last_name;
     this->major = major;  // Initialize major from the constructor parameter
     creationDate = time(0);  // Initialize creationDate with the current time
     failedAttempts = 0;

@@ -33,6 +33,8 @@ class user{
 
     string username; // username for users
     string password; // password in string 'cause there is some characters
+    string first_name;
+    string last_name;
     string role; //roles for users 
     string major;
     int ID;
@@ -45,7 +47,7 @@ class user{
     
     public:
 
-    user(string username,string password,string role,int ID,string major,bool locked);
+    user(string username,string password,string role,int ID,string first_name,string last_name,string major,bool locked);
     void addLog(string logEntry);
     void veiwLog();
     bool isActive();

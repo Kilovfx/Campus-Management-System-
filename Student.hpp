@@ -18,7 +18,8 @@ struct CourseGrade {
 
 class student : public user {
 public:
-    student(std::string username, std::string password, std::string role, int ID,string major);
+    student(std::string username, std::string password, std::string role, int ID,
+            std::string first_name, std::string last_name, std::string major);
 
     void login(std::vector<user*>& users) override;
     bool authenticate(const std::string& username, const std::string& password, std::vector<user*>& users);

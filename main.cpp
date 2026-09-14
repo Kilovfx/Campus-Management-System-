@@ -17,10 +17,12 @@ int main() {
     users.push_back(admin1);
     
     // Temporary test accounts
-    instructor* instructor1 = new instructor("ahmed", Hashpassword("123"), "Instructor", 5001, "Computer Science");
+    instructor* instructor1 = new instructor("ahmed", Hashpassword("123"), "Instructor", 5001,
+                                              "Ahmed", "Example", "Computer Science");
     users.push_back(instructor1);
     
-    student* student1 = new student("salem", Hashpassword("123"), "Student", 3001, "Computer Science");
+    student* student1 = new student("salem", Hashpassword("123"), "Student", 3001,
+                                     "Salem", "Example", "Computer Science");
     users.push_back(student1);
 
     int choice;
@@ -61,7 +63,7 @@ int main() {
             }
             case 2: {
                 // Create a temporary instructor object for login validation
-                instructor instructor1("", "", "Instructor", 56789, major);
+                instructor instructor1("", "", "Instructor", 56789, "", "", major);
                 instructor1.login(users);
                 if (instructor1.getusername() != "") {  // Check if login was successful
                     // Find the actual instructor in the users vector and use that
@@ -79,7 +81,7 @@ int main() {
             }
             case 3: {
                 // Create a temporary student object for login validation
-                student student1("", "", "Student", 1235, major);
+                student student1("", "", "Student", 1235, "", "", major);
                 student1.login(users);
                 if (student1.getusername() != "") {  // Check if login was successful
                     // Find the actual student in the users vector and use that

@@ -16,7 +16,9 @@
     #include <termios.h>
 #endif
 
-instructor::instructor(string username, string password, string role, int ID, string major):user(username, password, role, ID, major,false) {}
+instructor::instructor(string username, string password, string role, int ID,
+                       string first_name, string last_name, string major)
+    : user(username, password, role, ID, first_name, last_name, major, false) {}
 
 const vector <CourseInfo>& instructor::getCourses() const {
     return courses;
@@ -99,8 +101,9 @@ void instructor::logout() {
 
 void instructor::showprofile() {
     cout << "Instructor Profile\n";
+    cout << "----------------\n";
+    cout << "Name: " << first_name << " " << last_name << endl;
     cout << "Username: " << username << endl;
-    cout << "Role: " << role << endl;
     cout << "ID: " << ID << endl;
     cout << "Major: " << major << endl;
     // Date of account creation

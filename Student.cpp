@@ -17,8 +17,9 @@
 
 using namespace std;
 
-student::student(string username, string password, string role, int ID, string major)
-    : user(username, password, role, ID, major,false) {
+student::student(string username, string password, string role, int ID,
+                 string first_name, string last_name, string major)
+    : user(username, password, role, ID, first_name, last_name, major, false) {
     // Additional initialization for student-specific properties can be done here if needed
 }
 
@@ -103,10 +104,11 @@ void student::logout() {
 
 void student::showprofile() {
     cout << "Student Profile\n";
+    cout << "----------------\n";
+    cout << "Name: " << first_name << " " << last_name << endl;
     cout << "Username: " << username << endl;
-    cout << "Role: " << role << endl;
     cout << "ID: " << ID << endl;
-    cout <<"major: "<< major <<endl;
+    cout << "Major: " << major << endl;
     // Date of account creation
     char* dt = ctime(&creationDate);
     cout << "Account created on: " << dt << endl;
