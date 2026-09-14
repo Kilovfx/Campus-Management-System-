@@ -26,6 +26,7 @@ public:
     void logout() override;
     void showprofile() override;
     void addCourse(std::string courseName, int creditHours = 0);
+    void loadCourse(std::string courseName, double grade, double creditHours);
     bool hasCourse(const std::string& courseName) const;
     void removeCourse(std::string courseName);
     std::vector<CourseGrade>& getEnrolledCourses();

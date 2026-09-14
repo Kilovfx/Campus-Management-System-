@@ -138,49 +138,49 @@ string admin::encryptpass() {
 //message login for the admin
 void admin::login(vector<user*>& users){
     
-    string username,password;
+    string username, password;
     int attempts = 0;
     const int maxAttempts = 3;
     const int waitTime = 10;
-    
-    cout<<"enter the username: ";
-    cin>>username;
-    if (hasExtraInputOnLine()) {
-        cout << "Invalid input: spaces are not allowed in usernames.\n";
-        username.clear();
-    }
-    cout<<"enter the password: ";
-    password = encryptpass();
-    
-    while(!authenticate(username,password)){
+
+    while (true) {
+        cout << "enter the username: ";
+        cin >> username;
+        if (hasExtraInputOnLine()) {
+            cout << "Invalid input: spaces are not allowed in usernames.\n";
+            username.clear();
+        }
+
+        cout << "enter the password: ";
+        password = encryptpass();
+
+        user* account = nullptr;
+        for (auto* userAccount : users) {
+            if (userAccount->getusername() == username &&
+                userAccount->getRole() == "admin") {
+                account = userAccount;
+                break;
+            }
+        }
+
+        if (account != nullptr &&
+            verifypassword(password, account->getpassword())) {
+            this->username = username;
+            cout << "User : " << username << " logged in successfully!\n";
+            addLog("Admin logged in");
+            return;
+        }
+
         attempts++;
-        
+
         if(attempts >= maxAttempts) {
             cout << "You have made " << attempts << " incorrect attempts. Please wait for " << waitTime << " seconds...\n";
             this_thread::sleep_for(chrono::seconds(waitTime));
             attempts = 0;
             cout << "You can now try again.\n";
         }
-        
-        cout<<"Invalid credentials. Please try again.\n";
-        cout<<"enter the username: ";
-        cin>>username;
-        if (hasExtraInputOnLine()) {
-            cout << "Invalid input: spaces are not allowed in usernames.\n";
-            username.clear();
-        }
-        cout<<"enter the password: ";
-        password = encryptpass();
-    }
 
-    if(authenticate(username,password)){
-    cout << "User : " << username <<" logged in successfully!\n";
-    this-> username = username;
-    addLog("Admin logged in"); // count the logs for the admin 
-    }
-    else{
-        cout<<"Invalid credentials. Exiting program.\n";
-        exit(1);
+        cout << "Invalid credentials. Please try again.\n";
     }
 }
 

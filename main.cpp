@@ -8,6 +8,7 @@
 #include "admin.hpp"
 #include "instructor.hpp"
 #include "Password.hpp"
+#include "UserLoader.hpp"
 
 using namespace std;
 
@@ -15,27 +16,27 @@ int main() {
 
     Database db;
 
-    if(!db.connect()){
-        cout <<" Database connection failed!\n";
+    if (db.connect()) {
+        cout << "Database connection successful!\n";
+    } else {
+        cout << "Database connection failed!\n";
+        cout << "Please start MySQL and make sure the database is available before running the program.\n";
+        return 0;
     }
-    else{
-        cout <<"Database connection successful!\n";
-    }
-    
-    vector<user*> users;  // قائمة لتخزين المستخدمين
-    admin* admin1 = new admin("admin", Hashpassword("123"), "admin", 1350);  // إنشاء حساب admin
-    users.push_back(admin1);
-    
-    // Temporary test accounts
-    instructor* instructor1 = new instructor("ahmed", Hashpassword("123"), "Instructor", 5001,
-                                              "Ahmed", "Example", "Computer Science");
-    users.push_back(instructor1);
-    
-    student* student1 = new student("salem", Hashpassword("123"), "Student", 3001,
-                                     "Salem", "Example", "Computer Science");
-    users.push_back(student1);
 
+    vector<user*> users;
+
+    users = loadUsers(db);
+    cout << "Loaded " << users.size() << " user account(s) from SQL.\n";
+    if (users.empty()) {
+        cout << "No valid user accounts were found in the users table.\n";
+    }
+    for (auto* loadedUser : users) {
+        cout << "Loaded username: " << loadedUser->getusername()
+             << " | role: " << loadedUser->getRole() << "\n";
+    }
     int choice;
+
     string input;
 
     do {
@@ -67,17 +68,26 @@ int main() {
         string username, password, major;
         switch (choice) {
             case 1: {
-                admin1->login(users);  // تسجيل دخول كـ Admin
-                admin1->Showmeniu(users);  // عرض خيارات admin
+                admin admin1("", "", "admin", 0);
+                admin1.login(users);
+                if (admin1.getusername() != "") {
+                    for (auto* user : users) {
+                        if (user->getRole() == "admin" && user->getusername() == admin1.getusername()) {
+                            admin* actualAdmin = dynamic_cast<admin*>(user);
+                            if (actualAdmin != nullptr) {
+                                actualAdmin->Showmeniu(users);
+                            }
+                            break;
+                        }
+                    }
+                }
                 break;
             }
             case 2: {
-                // Create a temporary instructor object for login validation
                 instructor instructor1("", "", "Instructor", 56789, "", "", major);
                 instructor1.login(users);
-                if (instructor1.getusername() != "") {  // Check if login was successful
-                    // Find the actual instructor in the users vector and use that
-                    for (auto& user : users) {
+                if (instructor1.getusername() != "") {
+                    for (auto* user : users) {
                         if (user->getRole() == "Instructor" && user->getusername() == instructor1.getusername()) {
                             instructor* actualInstructor = dynamic_cast<instructor*>(user);
                             if (actualInstructor != nullptr) {
@@ -90,12 +100,10 @@ int main() {
                 break;
             }
             case 3: {
-                // Create a temporary student object for login validation
                 student student1("", "", "Student", 1235, "", "", major);
                 student1.login(users);
-                if (student1.getusername() != "") {  // Check if login was successful
-                    // Find the actual student in the users vector and use that
-                    for (auto& user : users) {
+                if (student1.getusername() != "") {
+                    for (auto* user : users) {
                         if (user->getRole() == "Student" && user->getusername() == student1.getusername()) {
                             student* actualStudent = dynamic_cast<student*>(user);
                             if (actualStudent != nullptr) {
@@ -116,15 +124,8 @@ int main() {
         }
     } while (choice != 4);
 
-    // Clean up remaining users (the admin pointer might have been deleted)
-    for (auto& user : users) {
-        // Only delete if it's not already deleted
-        if (user != admin1) {  // admin1 might have been deleted already
-            delete user;
-        }
-    }
-    if (admin1 != nullptr) {
-        delete admin1;
+    for (auto* user : users) {
+        delete user;
     }
 
     return 0;

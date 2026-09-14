@@ -22,9 +22,10 @@ bool Database::connect()
         cout << "MySQL initialization failed\n";
         return false;
     }
+    
 
-
-    conn = mysql_real_connect(
+    else{
+        conn = mysql_real_connect(
         initializedConnection,
         "localhost",
         "root",
@@ -34,21 +35,39 @@ bool Database::connect()
         NULL,
         0
     );
-
-
-    if(conn)
+            if(conn)
     {
         cout << "Database connected\n";
         return true;
     }
 
-
+    }
+    
     cout << "Database connection failed: "
          << mysql_error(initializedConnection) << endl;
     mysql_close(initializedConnection);
     conn = NULL;
     return false;
 }
+
+MYSQL_RES* Database::executeSelect(string query){
+    if(mysql_query(conn,query.c_str())){
+        cout << mysql_error(conn);
+        return nullptr;
+    }
+    return mysql_store_result(conn);
+}
+
+bool Database::executeQuery(string query)
+{
+    if(mysql_query(conn, query.c_str()))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 
 
 void Database::disconnect()
@@ -61,7 +80,6 @@ void Database::disconnect()
 }
 
 
-MYSQL* Database::getConnection()
-{
+MYSQL* Database::getConnection(){
     return conn;
 }

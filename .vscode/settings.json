@@ -1,7 +1,17 @@
 {
     "editor.inlineSuggest.enabled": true,
+    "editor.tabCompletion": "on",
+    "editor.acceptSuggestionOnCommitCharacter": true,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+    },
     "github.copilot.enable": {
         "*": true,
-        "cpp": true
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false,
+        "cpp": false
     }
 }

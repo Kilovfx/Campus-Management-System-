@@ -23,6 +23,12 @@ student::student(string username, string password, string role, int ID,
     // Additional initialization for student-specific properties can be done here if needed
 }
 
+void student::loadCourse(string courseName, double grade, double creditHours)
+{
+    enrolledCourses.push_back(
+        CourseGrade(courseName, grade, creditHours)
+    );
+}
 
 
 void student::login(vector<user*>& users) {
