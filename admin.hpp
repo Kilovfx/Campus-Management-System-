@@ -44,7 +44,7 @@ class admin : public user{
     bool authenticate(string username,string password);
     void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
     int getMajorID(Database& db,string majorName);                
-    void deleteuser(vector<user*>& users,string username,string password); 
+    void deleteuser(vector<user*>& users,Database& db,string username,string password); 
     void asignrole(vector<user*>& users,string username,string newRole);
     void changepassword(vector<user*>& users);
     void changeMajor(vector<user*>& users);

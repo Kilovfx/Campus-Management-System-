@@ -472,7 +472,6 @@ void admin::createuser(std::vector<user*>& users,Database& db, std::string usern
                 to_string(majorID) + 
         
             ")";
-            cout << "SQL QUERY: " << studentQuery << endl;
             if(!db.executeQuery(studentQuery)){
                 cout << "Failed creating student profile!\n";
                 return;
@@ -533,37 +532,137 @@ void admin::createuser(std::vector<user*>& users,Database& db, std::string usern
 
 
 //function for deleting user by the admin using the khaled method [vector + iterator techneique]
-void admin::deleteuser(vector<user*>& users,string username,string password){
-    // List all users
-    cout << "\n--- List of Users ---\n";
-    static int userCount = 0;
-    for (const auto& user : users) {
-        userCount++;
-        cout << userCount << ". Username: " << user->getusername() << " | Role: " << user->getRole() << " | ID: " << user->getID() << endl;
+void admin::deleteuser(vector<user*>& users,Database& db,string username,string password){
+    cout << "\n--- Delete User ---\n";
+    cout << "1. List all users\n";
+    cout << "2. Delete by username\n";
+    cout << "3. Delete by ID\n";
+    cout << "0. Cancel\n";
+
+    int deleteChoice;
+
+    cout << "Enter your choice: ";
+    cin >> deleteChoice;
+
+    while(cin.fail() || deleteChoice < 0 || deleteChoice > 3 || hasExtraInputOnLine())
+    {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        cout << "Invalid choice. Enter 0-3: ";
+        cin >> deleteChoice;
     }
-    
-    
-    if (users.empty()) {
-        cout << "No users found in the system.\n";
+
+
+    if(deleteChoice == 0)
+    {
+        cout << "Delete cancelled.\n";
+        return;
+    }
+
+
+    user* selectedUser = nullptr;
+
+
+    // Option 1: List users
+    if(deleteChoice == 1)
+    {
+        cout << "\n--- Users List ---\n";
+
+        for(auto* user : users)
+        {
+            cout << "Username: " << user->getusername()
+                << " | ID: " << user->getID()
+                << " | Role: " << user->getRole()
+                << endl;
+        }
+
+        string input;
+
+        cout << "\nEnter username or ID to delete: ";
+        cin >> input;
+
+
+        for(auto* user : users)
+        {
+            // Search by username
+            if(user->getusername() == input)
+            {
+                selectedUser = user;
+                break;
+            }
+
+
+            // Search by ID
+            try
+            {
+                int id = stoi(input);
+
+                if(user->getID() == id)
+                {
+                    selectedUser = user;
+                    break;
+                }
+            }
+            catch(...)
+            {
+                // input was not a number, ignore
+            }
+        }
+    }
+
+
+    // Option 2: Username
+    else if(deleteChoice == 2)
+    {
+        string username;
+
+        cout << "Enter username: ";
+        cin >> username;
+
+
+        for(auto* user : users)
+        {
+            if(user->getusername() == username)
+            {
+                selectedUser = user;
+                break;
+            }
+        }
+    }
+
+
+    // Option 3: ID
+    else if(deleteChoice == 3)
+    {
+        int id;
+
+        cout << "Enter user ID: ";
+        cin >> id;
+
+
+        for(auto* user : users)
+        {
+            if(user->getID() == id)
+            {
+                selectedUser = user;
+                break;
+            }
+        }
+    }
+
+
+
+    if(selectedUser == nullptr)
+    {
+        cout << "User not found.\n";
         return;
     }
     
-    // Ask user to choose which user to delete
-    int choice;
-    cout << "\nEnter the number of the user to delete (1-" << userCount << "): ";
-    cin >> choice;
-
-    while(cin.fail() || choice < 1 || choice > userCount || hasExtraInputOnLine()) {
-        if(cin.fail()) {
-            cin.clear();  // clear the error flag
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-        }
-        cout << "Invalid choice. Please enter a number between 1 and " << userCount << ": ";
-        cin >> choice;
-    }
-    
     // Get the selected user
-    string selectedUsername = users[choice - 1]->getusername();
+    string selectedUsername = selectedUser->getusername();
+    int selectedID = selectedUser->getID();
+    string selectedRole = selectedUser->getRole();
     
     // Prevent deleting the currently logged-in admin
     if (selectedUsername == this->username) {
@@ -571,6 +670,13 @@ void admin::deleteuser(vector<user*>& users,string username,string password){
         addLog("Attempted to delete own admin account (prevented)");
         return;
     }
+
+    if(isAdminRole(selectedRole)){
+        cout <<"Cannot delete another admin.\n";
+        return;
+    }
+
+
     
     // Ask for confirmation
     char confirm;
@@ -593,26 +699,63 @@ void admin::deleteuser(vector<user*>& users,string username,string password){
         addLog("Cancelled deletion of user: " + selectedUsername);
         return;
     }
+
+
     
-    // Delete the user
-    auto it = users.begin();
-    bool found = false;
-    while(it < users.end()) {
-        if((*it)->getusername() == selectedUsername) {
-            delete *it;
-            users.erase(it);
-            cout << "User: " << selectedUsername << " Deleted Successfully\n";
-            addLog("Deleted user: " + selectedUsername);
-            found = true;
-            break;
-        } else {
-            ++it;
+    /*
+        Delete profile table first
+        because it has foreign key to users
+    */
+
+    if(selectedRole == "Student"){
+        string query = 
+        "DELETE FROM students WHERE student_id ="
+        + to_string(selectedID);
+
+        if(!db.executeQuery(query)){
+            cout <<"Failed deleting student profile.\n";
+            return;
         }
     }
-    
+
+    else if (selectedRole == "Instructor"){
+        string query = 
+        "DELETE FROM instructors WHERE instructor_id ="
+        + to_string(selectedID);
+
+        if(!db.executeQuery(query)){
+            cout <<"Failed deleting instructor profile.\n";
+            return;          
+        }
+    }
+
+    // Delete from users table
+    string userQuery =
+    "DELETE FROM users WHERE user_id="
+    + to_string(selectedID);
+        if(!db.executeQuery(userQuery)){
+            cout <<"Failed deleting user profile.\n";
+            return;
+        }
+
+     // Delete from vector
+    bool found = false;
+    auto it = users.begin();
+    while(it != users.end()){
+        if((*it)->getID() == selectedID){
+            delete *it;
+            users.erase(it);
+            found = true;
+            break;
+        }
+        ++it;
+    }
+
     if(!found) {
         cout << "User: " << selectedUsername << " Not Found\n";
         return;
+    } else {
+        cout <<"User: " << selectedUsername << "| ID: " << selectedID << " | Role: " << selectedRole << " has been deleted successfully! ";
     }
 }
 
@@ -1096,7 +1239,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case DELETE_USER: 
             {
-                deleteuser(users, "", "");
+                deleteuser(users,db, "", "");
             }
             break;
 
