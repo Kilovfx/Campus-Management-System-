@@ -75,7 +75,7 @@ int main() {
                         if (user->getRole() == "admin" && user->getusername() == admin1.getusername()) {
                             admin* actualAdmin = dynamic_cast<admin*>(user);
                             if (actualAdmin != nullptr) {
-                                actualAdmin->Showmeniu(users);
+                                actualAdmin->Showmeniu(users,db);
                             }
                             break;
                         }

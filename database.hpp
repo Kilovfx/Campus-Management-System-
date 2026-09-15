@@ -18,8 +18,10 @@ public:
     ~Database();
     bool connect();
     void disconnect();
+    int getLastInsertID();
     MYSQL* getConnection();
     bool executeQuery(string query);
+    string escapeString(const string& value);
     MYSQL_RES* executeSelect(string query);
 
 };

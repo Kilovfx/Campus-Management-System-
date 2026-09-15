@@ -51,8 +51,13 @@ bool Database::connect()
 }
 
 MYSQL_RES* Database::executeSelect(string query){
+    if (conn == nullptr) {
+        cout << "Database is not connected\n";
+        return nullptr;
+    }
+
     if(mysql_query(conn,query.c_str())){
-        cout << mysql_error(conn);
+        cout << mysql_error(conn) << endl;
         return nullptr;
     }
     return mysql_store_result(conn);
@@ -60,15 +65,43 @@ MYSQL_RES* Database::executeSelect(string query){
 
 bool Database::executeQuery(string query)
 {
+    if (conn == nullptr) {
+        cout << "Database is not connected\n";
+        return false;
+    }
+
     if(mysql_query(conn, query.c_str()))
     {
+        cout << mysql_error(conn) << endl;
         return false;
     }
 
     return true;
 }
 
+// for SQL injections
+string Database::escapeString(const string& value)
+{
+    if (conn == nullptr) {
+        return value;
+    }
+    string escaped(value.size() * 2 + 1, '\0');
+    unsigned long len = mysql_real_escape_string(
+        conn, &escaped[0], value.c_str(), value.size());
+    escaped.resize(len);
+    return escaped;
+}
 
+
+int Database::getLastInsertID(){
+
+    if(conn == nullptr){
+
+        return -1;
+    }
+
+    return static_cast<int>(mysql_insert_id(conn));
+}
 
 void Database::disconnect()
 {

@@ -2,6 +2,7 @@
 #define ADMIN_HPP
 
 #include "user.hpp"
+#include "database.hpp"
 #include <iostream>
 #include <string>
 #include <memory>
@@ -13,7 +14,7 @@ class instructor;
 
 class admin : public user{
     private:
-    static int nextID;
+
     enum{
         CREATE_USER = 1,
         DELETE_USER,
@@ -39,10 +40,10 @@ class admin : public user{
     void showprofile() override;
     void ViewAllLog(vector<user*>& users);
     void ListAll(vector<user*>& users);
-    void Showmeniu(vector<user*>& users);
+    void Showmeniu(vector<user*>& users,Database& db);
     bool authenticate(string username,string password);
-    void createuser(vector<user*>& users, string username, string password, string role,
-                    string first_name, string last_name, string major);
+    void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
+    int getMajorID(Database& db,string majorName);                
     void deleteuser(vector<user*>& users,string username,string password); 
     void asignrole(vector<user*>& users,string username,string newRole);
     void changepassword(vector<user*>& users);
