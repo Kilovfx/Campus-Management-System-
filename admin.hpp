@@ -46,7 +46,7 @@ class admin : public user{
     int getMajorID(Database& db,string majorName);                
     void deleteuser(vector<user*>& users,Database& db,string username,string password); 
     void asignrole(vector<user*>& users,string username,string newRole);
-    void changepassword(vector<user*>& users);
+    void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users);
     void assignCourseForInstructor(vector<user*>& users);
     string encryptpass() override;

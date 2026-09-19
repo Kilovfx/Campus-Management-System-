@@ -755,7 +755,7 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
         cout << "User: " << selectedUsername << " Not Found\n";
         return;
     } else {
-        cout <<"User: " << selectedUsername << "| ID: " << selectedID << " | Role: " << selectedRole << " has been deleted successfully! ";
+        cout <<"User: " << selectedUsername << "| ID: " << selectedID << " | Role: " << selectedRole << " has been deleted successfully! \n";
     }
 }
 
@@ -806,7 +806,7 @@ void admin::asignrole(vector<user*>& users,string username,string newRole){
     }
 }
 
-void admin::changepassword(vector<user*>& users){
+void admin::changepassword(vector<user*>& users,Database& db){
     // List all users first
     ListAll(users);
     cout << "\n";
@@ -817,8 +817,10 @@ void admin::changepassword(vector<user*>& users){
     bool userFound = false;
     
     while(!userFound) {
+
         cout << "Enter the username to change password for: ";
         cin >> targetUsername;
+
         if (hasExtraInputOnLine()) {
             cout << "Invalid input: spaces are not allowed in usernames.\n";
             targetUsername.clear();
@@ -837,15 +839,20 @@ void admin::changepassword(vector<user*>& users){
                 break;
             }
         }
-        
+
         if(targetUser == nullptr) {
             cout << "User: " << targetUsername << " Not Found\n";
             cout << "Do you want to try again? (y/n): ";
             char retry;
             cin >> retry;
-            if(retry != 'y' && retry != 'Y') {
-                addLog("Cancelled password change operation for non-existent user: " + targetUsername);
-                return;
+            while(retry != 'y' && retry != 'Y' && retry != 'n' && retry !='N') {
+                cout<<"wrong Input please Use (y/n): ";
+                cin >> retry;
+
+                if(retry == 'N' || retry == 'n'){
+                    addLog("Cancelled password change operation for non-existent user: " + targetUsername);
+                    return;
+                }
             }
         } else {
             userFound = true;
@@ -878,15 +885,36 @@ void admin::changepassword(vector<user*>& users){
         cout << "Enter again to confirm: ";
         confirmpassword = encryptpass();
         
-        if(newpassword == confirmpassword){
-            targetUser->setPassword(Hashpassword(newpassword));
-            cout << "Password for user " << targetUsername << " has been changed successfully\n";
-            addLog("Changed password for user: " + targetUsername);
-            break;
+        if(newpassword != confirmpassword){
+            cout <<"Passwords don't match! Please try again.\n"<<endl;
+            continue;
         }
-        else{
-            cout << "Passwords don't match! Please try again.\n";
+        
+        string hashedpassword = Hashpassword(newpassword);
+        string query =
+            "UPDATE users SET password_hash='" +
+            db.escapeString(hashedpassword) +
+            "' WHERE user_id=" +
+            to_string(targetUser->getID());
+
+        if(!db.executeQuery(query)){
+
+            cout << "Failed to update password in the database.\n";
+            addLog("Failed database password update for user: "
+                   + targetUsername);
+            return;
+
         }
+
+        targetUser->setPassword(hashedpassword);
+
+        cout << "Password for user "
+             << targetUsername
+             << " has been changed successfully.\n";
+
+        addLog("Changed password for user: " + targetUsername);
+        break;
+        
     }
 }
 
@@ -1317,7 +1345,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case CHANGE_PASSWORD:
             {
-                changepassword(users);  
+                changepassword(users,db);  
             }
             break;
 
