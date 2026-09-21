@@ -1,5 +1,5 @@
 #include "password.hpp"
-#include "bcrypt.h"
+#include "PasswordHash.h"
 
 string Hashpassword(string password)
 {

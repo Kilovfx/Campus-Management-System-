@@ -1,5 +1,5 @@
-#ifndef BCRYPT_H
-#define BCRYPT_H
+#ifndef PASSWORD_HASH_H
+#define PASSWORD_HASH_H
 
 #include <string>
 
@@ -11,4 +11,4 @@ namespace bcrypt {
 
 }
 
-#endif // BCRYPT_H
+#endif // PASSWORD_HASH_H

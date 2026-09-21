@@ -1,5 +1,6 @@
 admin.cpp
 admin.hpp
-database.cpp
 test_main.cpp
 test.bat
+database.cpp
+script.bat
