@@ -1,6 +1,22 @@
-admin.cpp
-admin.hpp
-test_main.cpp
-test.bat
+# Build folder
+build/
+
+# Executables
+*.exe
+
+# Object files
+*.obj
+*.o
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+# VS Code settings
+.vscode/
+
+# Old build scripts
 database.cpp
 script.bat
+test.bat

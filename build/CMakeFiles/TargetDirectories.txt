@@ -1,4 +1,0 @@
-C:/projects/Campus managment system C++/build/CMakeFiles/Campus_app.dir
-C:/projects/Campus managment system C++/build/CMakeFiles/Test_app.dir
-C:/projects/Campus managment system C++/build/CMakeFiles/edit_cache.dir
-C:/projects/Campus managment system C++/build/CMakeFiles/rebuild_cache.dir
