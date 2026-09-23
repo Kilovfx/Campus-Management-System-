@@ -31,8 +31,24 @@ find_library(
 
 )
 
+# Windows links against the import library above, but still needs the
+# corresponding DLL at runtime.  Copy it next to each executable so running
+# from the build directory does not depend on the user's PATH.
+if(WIN32)
+    find_file(
+        MYSQL_RUNTIME_LIBRARY
+        NAMES libmysql.dll
+        PATHS "${MYSQL_DIR}/lib" "${MYSQL_DIR}/bin"
+        NO_DEFAULT_PATH
+    )
+endif()
+
 if(NOT MYSQL_INCLUDE_DIR OR NOT MYSQL_LIBRARY)
     message(FATAL_ERROR "MySQL was not found")
+endif()
+
+if(WIN32 AND NOT MYSQL_RUNTIME_LIBRARY)
+    message(FATAL_ERROR "MySQL runtime DLL (libmysql.dll) was not found")
 endif()
 
 
@@ -84,6 +100,14 @@ target_link_libraries(
 
 )
 
+if(WIN32)
+    add_custom_command(TARGET Campus_app POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${MYSQL_RUNTIME_LIBRARY}"
+                "$<TARGET_FILE_DIR:Campus_app>/libmysql.dll"
+    )
+endif()
+
 # -----------------------------
 # Main Application -- END
 # -----------------------------
@@ -117,6 +141,14 @@ target_link_libraries(
     PRIVATE
     ${MYSQL_LIBRARY}
 )
+
+if(WIN32)
+    add_custom_command(TARGET Test_app POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${MYSQL_RUNTIME_LIBRARY}"
+                "$<TARGET_FILE_DIR:Test_app>/libmysql.dll"
+    )
+endif()
 
 # -----------------------------
 # Test Application -- END

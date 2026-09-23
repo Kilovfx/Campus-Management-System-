@@ -45,7 +45,7 @@ class admin : public user{
     void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
     int getMajorID(Database& db,string majorName);                
     void deleteuser(vector<user*>& users,Database& db,string username,string password); 
-    void asignrole(vector<user*>& users,string username,string newRole);
+    void asignrole(vector<user*>& users, Database& db, string username, string newRole);
     void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users);
     void assignCourseForInstructor(vector<user*>& users);

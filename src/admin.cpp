@@ -763,47 +763,41 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
 
 
 
-void admin::asignrole(vector<user*>& users,string username,string newRole){
+void admin::asignrole(vector<user*>& users, Database& db, string username, string newRole){
 
-    auto itCheck = users.begin();
-    while (itCheck != users.end()){
-        if ((*itCheck)->getusername() == username){
-            if((*itCheck)->getRole() == newRole){
-                cout << "User: "<< username <<" already has the role: "<< newRole <<"\n";
-                return;
-            }
-            break;
-        }
-        ++itCheck;
+    auto it = find_if(users.begin(), users.end(), [&username](user* selectedUser) {
+        return selectedUser->getusername() == username;
+    });
+
+    if (it == users.end()) {
+        cout << "User: " << username << " Not Found\n";
+        return;
     }
 
-    auto itAdmin = users.begin();
-    while(itAdmin != users.end()){
-        if((*itAdmin)->getusername() == username) {
-            if(isAdminRole((*itAdmin)->getRole())){
-                cout << "Cannot change role of Admin user: "<< username <<"\n";
-                return;
-            }
-            break;
-        }
-        ++itAdmin;
+    user* selectedUser = *it;
+
+    if (isAdminRole(selectedUser->getRole())) {
+        cout << "Cannot change role of Admin user: " << username << "\n";
+        return;
     }
 
-    auto it = users.begin();
-    bool found = false;
-    while (it != users.end()){
-        if ((*it)->getusername() == username){
-            (*it)->setRole(newRole);
-            cout <<"Role of user: "<< username << " has been updated to : "<< newRole<<"\n";
-            found = true;
-            addLog("Changed role for user " + username + " to " + newRole);
-            break;
-        }
-        ++it;
+    if (selectedUser->getRole() == newRole) {
+        cout << "User: " << username << " already has the role: " << newRole << "\n";
+        return;
     }
-    if(!found){
-        cout << "User : "<< username <<"Not Found\n";
+
+    const string query =
+        "UPDATE users SET role='" + db.escapeString(newRole) +
+        "' WHERE user_id=" + to_string(selectedUser->getID());
+
+    if (!db.executeQuery(query)) {
+        cout << "Failed to update the role of user: " << username << "\n";
+        return;
     }
+
+    selectedUser->setRole(newRole);
+    cout << "Role of user: " << username << " has been updated to: " << newRole << "\n";
+    addLog("Changed role for user " + username + " to " + newRole);
 }
 
 void admin::changepassword(vector<user*>& users,Database& db){
@@ -1300,11 +1294,6 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
                     // Check if user exists
                     for(const auto& user : users) {
                         if(user->getusername() == username) {
-                            if(isAdminRole(user->getRole())) {
-                                cout << "Cannot change role of Admin user: "<< username <<"\n";
-                                validRole = true;
-                                break;
-                            }
                             userExists = true;
                             break;
                         }
@@ -1331,9 +1320,30 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
                             if(newRole == "Instructor" || newRole == "Student") {
                                 validRole = true;
-                                // Assign the new role
-                                asignrole(users,username,newRole);
-                                retry = false;
+                                user* selectedUser = nullptr;
+                                for (auto* user : users) {
+                                    if (user->getusername() == username) {
+                                        selectedUser = user;
+                                        break;
+                                    }
+                                }
+
+                                const bool sameRole =
+                                    selectedUser != nullptr &&
+                                    selectedUser->getRole() == newRole;
+
+                                asignrole(users, db, username, newRole);
+
+                                if (sameRole) {
+                                    cout << "Do you want to try again? (y/n): ";
+                                    char choice;
+                                    cin >> choice;
+                                    if (choice != 'y' && choice != 'Y') {
+                                        retry = false;
+                                    }
+                                } else {
+                                    retry = false;
+                                }
                             } else {
                                 cout << "Invalid role. Please enter either 'Instructor' or 'Student'.\n";
                             }
