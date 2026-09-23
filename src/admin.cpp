@@ -27,7 +27,7 @@ static const vector<string>& getAllowedMajors() {
         "Electrical Engineering",
         "Business Administration",
         "Mechanical Engineering",
-        "Civil Engineering",
+        "Cyber Security",
         "Pharmacy",
         "Marketing"
 
@@ -62,6 +62,225 @@ admin::admin(string username, string password, string role, int ID)
     this->password = password;
     this->role = role;
     this->ID = ID;
+}
+
+bool admin::changeUserRoleDatabase(Database &db,user* selectedUser,string newRole){
+
+    string oldRole = selectedUser->getRole();
+    int ID = selectedUser->getID();
+
+    if(oldRole == newRole){
+        cout <<"User already has this role.\n";
+        return false;
+    }
+
+    // Start transaction
+    if(!db.executeQuery("START TRANSACTION"))
+    {
+        cout << "Failed starting transaction\n";
+        return false;
+    }
+
+    // student -> instructor
+    if(oldRole == "Student" && newRole == "Instructor"){
+
+        string deletestudentCourses = 
+        "DELETE FROM student_courses WHERE student_id="
+        + to_string(ID);
+
+        if(!db.executeQuery(deletestudentCourses)){
+
+        cout<<"Failed to delete student courses\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+
+        }
+
+
+        string InsertQuery = 
+        "INSERT INTO instructors "
+        "(instructor_id,first_name,last_name,major_id)"
+        "SELECT student_id, first_name, last_name, major_id "
+        "FROM students WHERE student_id=" 
+        + to_string(ID);
+
+        if(!db.executeQuery(InsertQuery) ||
+           mysql_affected_rows(db.getConnection()) != 1){
+
+        cout << "Failed creating instructor profile for student ID "
+             << ID << " (student row may not exist)\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+
+        }
+
+    
+
+        string deleteStudent =
+        "DELETE FROM students WHERE student_id="
+        + to_string(ID);
+
+        if(!db.executeQuery(deleteStudent) ||
+           mysql_affected_rows(db.getConnection()) != 1){
+            
+            cout << "Failed deleting student profile for student ID "
+                 << ID << "\n";
+            db.executeQuery("ROLLBACK");
+            return false;
+        }
+
+    }
+
+    // instructor -> student
+    else if(oldRole == "Instructor" && newRole == "Student"){
+
+        string deleteInstructorCourses = 
+        "DELETE FROM instructor_courses WHERE instructor_id="
+        + to_string(ID);
+
+        if(!db.executeQuery(deleteInstructorCourses)){
+
+        cout<<"Failed to delete instructor courses\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+
+        }
+
+
+        string InsertQuery = 
+        "INSERT INTO students "
+        "(student_id, first_name, last_name, major_id) "
+        "SELECT instructor_id, first_name, last_name, major_id "
+        "FROM instructors WHERE instructor_id="
+        + to_string(ID);
+
+        if(!db.executeQuery(InsertQuery) ||
+           mysql_affected_rows(db.getConnection()) != 1){
+
+        cout << "Failed creating student profile for instructor ID "
+             << ID << " (instructor row may not exist)\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+
+        }
+
+    
+
+        string deleteInstructor =
+        "DELETE FROM instructors WHERE instructor_id="
+        + to_string(ID);
+
+        if(!db.executeQuery(deleteInstructor) ||
+           mysql_affected_rows(db.getConnection()) != 1){
+            
+            cout << "Failed deleting instructor profile for instructor ID "
+                 << ID << "\n";
+            db.executeQuery("ROLLBACK");
+            return false;
+        }
+
+    }
+
+
+    string Updateuser = 
+    "UPDATE users SET role='" +
+    db.escapeString(newRole) +
+    "' WHERE user_id="
+    + to_string(ID);
+
+    if(!db.executeQuery(Updateuser))
+    {
+        cout << "Failed updating user role\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+    }
+
+        // Save changes permanently
+    if(!db.executeQuery("COMMIT"))
+    {
+        cout << "Failed committing transaction\n";
+        db.executeQuery("ROLLBACK");
+        return false;
+    }
+
+    return true;
+
+}
+
+bool admin::changeMajorDatabase(Database &db,user* selectedUser,string newMajor){
+
+    int ID = selectedUser->getID();
+    string role = selectedUser->getRole();
+
+    string getmajorid = 
+    "SELECT major_id FROM majors WHERE major_name='"
+    + db.escapeString(newMajor) + "'";
+
+    MYSQL_RES* result = db.executeSelect(getmajorid);
+
+    if(result == nullptr){
+        cout <<"Major not found\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout <<"Major not found\n";
+        mysql_free_result(result);
+        return false;
+    }
+
+    int majorID = stoi(row[0]);
+
+    mysql_free_result(result);
+
+    //Update user table
+    string updateUserQuery = 
+    "UPDATE users SET major_id=" 
+    + to_string(majorID) +
+    " WHERE user_id="
+    + to_string(ID);
+
+    if(!db.executeQuery(updateUserQuery)){
+    
+        return false;
+    }
+
+    string updateProfile;
+
+    if(role == "Student"){
+
+        updateProfile =
+        "UPDATE students SET major_id="
+        + to_string(majorID) +
+        " WHERE student_id="
+        + to_string(ID);
+
+    }
+
+    else if(role == "Instructor"){
+
+        updateProfile =
+        "UPDATE instructors SET major_id="
+        + to_string(majorID) +
+        " WHERE instructor_id="
+        + to_string(ID);
+
+    }
+
+    else {
+
+        cout<<"Invalid role\n";
+        return false;
+    }
+
+    if(!db.executeQuery(updateProfile)){
+        return false;
+    }
+
+    return true;
+
 }
 
 bool admin::authenticate(string username,string password){
@@ -763,41 +982,34 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
 
 
 
-void admin::asignrole(vector<user*>& users, Database& db, string username, string newRole){
+void admin::asignrole(vector<user*>& users,Database &db,string username,string newRole){
 
-    auto it = find_if(users.begin(), users.end(), [&username](user* selectedUser) {
-        return selectedUser->getusername() == username;
-    });
+    auto it = users.begin();
+    while(it != users.end()){
+        if((*it)->getusername() == username) {
+            user* selectedUser = *it;
+            if(isAdminRole((*it)->getRole())){
+                cout << "Cannot change role of Admin user: "<< username <<"\n";
+                return;
+            }
 
-    if (it == users.end()) {
+            if(changeUserRoleDatabase(db,selectedUser,newRole)){
+            selectedUser->setRole(newRole);
+            cout << "Role of user: "
+                     << username
+                     << " has been updated to: "
+                     << newRole << "\n";
+
+                addLog("Changed role for user "
+                       + username +
+                       " to " + newRole);
+            }
+         return;
+        } 
+        ++it;
+    }
         cout << "User: " << username << " Not Found\n";
-        return;
-    }
-
-    user* selectedUser = *it;
-
-    if (isAdminRole(selectedUser->getRole())) {
-        cout << "Cannot change role of Admin user: " << username << "\n";
-        return;
-    }
-
-    if (selectedUser->getRole() == newRole) {
-        cout << "User: " << username << " already has the role: " << newRole << "\n";
-        return;
-    }
-
-    const string query =
-        "UPDATE users SET role='" + db.escapeString(newRole) +
-        "' WHERE user_id=" + to_string(selectedUser->getID());
-
-    if (!db.executeQuery(query)) {
-        cout << "Failed to update the role of user: " << username << "\n";
-        return;
-    }
-
-    selectedUser->setRole(newRole);
-    cout << "Role of user: " << username << " has been updated to: " << newRole << "\n";
-    addLog("Changed role for user " + username + " to " + newRole);
+    
 }
 
 void admin::changepassword(vector<user*>& users,Database& db){
@@ -912,7 +1124,7 @@ void admin::changepassword(vector<user*>& users,Database& db){
     }
 }
 
-void admin::changeMajor(vector<user*>& users){
+void admin::changeMajor(vector<user*>& users,Database &db){
     int roleChoice;
     cout << "1. Change a student's major\n";
     cout << "2. Change an instructor's major\n";
@@ -979,24 +1191,38 @@ void admin::changeMajor(vector<user*>& users){
         printAllowedMajors();
     } 
 
-    size_t removedCourseCount = 0;
-    if (selectedRole == "Instructor") {
-        instructor* selectedInstructor = dynamic_cast<instructor*>(selectedUser);
-        if (selectedInstructor != nullptr) {
-            removedCourseCount = selectedInstructor->getCourses().size();
+    if(changeMajorDatabase(db, selectedUser, newMajor))
+{
+    if(selectedUser->getRole() == "Instructor")
+    {
+        instructor* selectedInstructor =
+        dynamic_cast<instructor*>(selectedUser);
+
+        if(selectedInstructor != nullptr)
+        {
             selectedInstructor->clearCourses();
         }
     }
 
+
     selectedUser->setMajor(newMajor);
-    cout << "Major updated successfully for " << selectedUser->getusername() << "\n";
-    addLog("Changed major for " + selectedRole + " " +
-           selectedUser->getusername() + " to " + newMajor);
-    if (removedCourseCount > 0) {
-        addLog("Removed " + to_string(removedCourseCount) +
-               " assigned course(s) from instructor " +
-               selectedUser->getusername() + " after major change");
+
+
+    cout << "Major updated successfully for "
+         << selectedUser->getusername()
+         << "\n";
+
+
+    addLog("Changed major for "
+           + selectedUser->getusername()
+           + " to "
+           + newMajor);
+ }
+    else
+    {
+        cout << "Failed updating major\n";
     }
+
 }
 
 
@@ -1294,6 +1520,11 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
                     // Check if user exists
                     for(const auto& user : users) {
                         if(user->getusername() == username) {
+                            if(isAdminRole(user->getRole())) {
+                                cout << "Cannot change role of Admin user: "<< username <<"\n";
+                                validRole = true;
+                                break;
+                            }
                             userExists = true;
                             break;
                         }
@@ -1320,30 +1551,9 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
                             if(newRole == "Instructor" || newRole == "Student") {
                                 validRole = true;
-                                user* selectedUser = nullptr;
-                                for (auto* user : users) {
-                                    if (user->getusername() == username) {
-                                        selectedUser = user;
-                                        break;
-                                    }
-                                }
-
-                                const bool sameRole =
-                                    selectedUser != nullptr &&
-                                    selectedUser->getRole() == newRole;
-
-                                asignrole(users, db, username, newRole);
-
-                                if (sameRole) {
-                                    cout << "Do you want to try again? (y/n): ";
-                                    char choice;
-                                    cin >> choice;
-                                    if (choice != 'y' && choice != 'Y') {
-                                        retry = false;
-                                    }
-                                } else {
-                                    retry = false;
-                                }
+                                // Assign the new role
+                                asignrole(users,db,username,newRole);
+                                retry = false;
                             } else {
                                 cout << "Invalid role. Please enter either 'Instructor' or 'Student'.\n";
                             }
@@ -1361,7 +1571,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case CHANGE_MAJOR:
             {
-                changeMajor(users);
+                changeMajor(users,db);
             }
             break;
 

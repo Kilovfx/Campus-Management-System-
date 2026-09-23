@@ -43,11 +43,13 @@ class admin : public user{
     void Showmeniu(vector<user*>& users,Database& db);
     bool authenticate(string username,string password);
     void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
-    int getMajorID(Database& db,string majorName);                
+    int  getMajorID(Database& db,string majorName);                
     void deleteuser(vector<user*>& users,Database& db,string username,string password); 
-    void asignrole(vector<user*>& users, Database& db, string username, string newRole);
+    void asignrole(vector<user*>& users,Database &db,string username,string newRole);
+    bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
+    bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
     void changepassword(vector<user*>& users,Database& db);
-    void changeMajor(vector<user*>& users);
+    void changeMajor(vector<user*>& users,Database &db);
     void assignCourseForInstructor(vector<user*>& users);
     string encryptpass() override;
 
