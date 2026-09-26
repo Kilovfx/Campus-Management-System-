@@ -6,6 +6,7 @@
 #include <vector>
 #include <ctime>
 #include <limits>
+#include "database.hpp"
 
 using namespace std;
 
@@ -55,7 +56,7 @@ class user{
     void resetFailedAttempts();
     void lockAccount(int durationMinutes);
 
-    virtual void login(std::vector<user*>& users) = 0; // login message for the user 
+    virtual void login(std::vector<user*>& users, Database& db) = 0; // login message for the user
     virtual void logout(); // logout message for the user
 
     virtual string getusername(); 
@@ -70,6 +71,8 @@ class user{
     void setMajor(string& newMajor);
     virtual string encryptpass();
     virtual ~user() {}
+
+    bool isUserLocked(Database &db);
 
 };
 #endif

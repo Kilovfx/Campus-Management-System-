@@ -14,6 +14,8 @@ using namespace std;
 
 int main() {
 
+    cout << "Program started\n";
+
     Database db;
 
     if (db.connect()) {
@@ -69,7 +71,7 @@ int main() {
         switch (choice) {
             case 1: {
                 admin admin1("", "", "admin", 0);
-                admin1.login(users);
+                admin1.login(users,db);
                 if (admin1.getusername() != "") {
                     for (auto* user : users) {
                         if (user->getRole() == "admin" && user->getusername() == admin1.getusername()) {
@@ -85,13 +87,13 @@ int main() {
             }
             case 2: {
                 instructor instructor1("", "", "Instructor", 56789, "", "", major);
-                instructor1.login(users);
+                instructor1.login(users,db);
                 if (instructor1.getusername() != "") {
                     for (auto* user : users) {
                         if (user->getRole() == "Instructor" && user->getusername() == instructor1.getusername()) {
                             instructor* actualInstructor = dynamic_cast<instructor*>(user);
                             if (actualInstructor != nullptr) {
-                                actualInstructor->showMenu(users, db);
+                                actualInstructor->showMenu(users,db);
                             }
                             break;
                         }
@@ -101,7 +103,7 @@ int main() {
             }
             case 3: {
                 student student1("", "", "Student", 1235, "", "", major);
-                student1.login(users);
+                student1.login(users,db);
                 if (student1.getusername() != "") {
                     for (auto* user : users) {
                         if (user->getRole() == "Student" && user->getusername() == student1.getusername()) {

@@ -52,7 +52,7 @@ void user::lockAccount(int durationMinutes){
     lockedUntil = time(nullptr) + (durationMinutes * 60);
 }
 
-void user::login(vector<user*>& users){
+void user::login(vector<user*>& users,Database &db){
     cout<< username << " logged in successfully .\n";
 }
 
@@ -123,6 +123,79 @@ void user::setPassword(const string& newPassword){
 void user::setMajor(string& newMajor){
     major = newMajor;
 }
+
+
+bool user::isUserLocked(Database &db){
+
+    string query =
+    "SELECT locked, locked_until "
+    "FROM account_security "
+    "WHERE user_id=" + to_string(ID);
+
+     MYSQL_RES* result = db.executeSelect(query);
+
+     if(result == nullptr)
+        return false;
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr)
+    {
+        mysql_free_result(result);
+        return false;
+    }
+
+
+    bool locked = stoi(row[0]);
+    cout << "Database locked status: " << locked << endl;
+
+    if(!locked)
+    {
+        mysql_free_result(result);
+        return false;
+    }
+
+    // check if lock time expired
+    string checkTime =
+    "SELECT NOW() >= locked_until "
+    "FROM account_security "
+    "WHERE user_id=" + to_string(ID);
+
+    MYSQL_RES* timeResult = db.executeSelect(checkTime);
+
+    if(timeResult == nullptr){
+
+        mysql_free_result(result);
+        return locked;
+
+    }
+
+    MYSQL_ROW timeRow = mysql_fetch_row(timeResult);
+
+    if(timeRow && stoi(timeRow[0]) == 1)
+    {
+        // unlock automatically
+        string unlock =
+        "UPDATE account_security SET "
+        "locked=0, failed_attempts=0 "
+        "WHERE user_id=" + to_string(ID);
+
+        db.executeQuery(unlock);
+
+        mysql_free_result(timeResult);
+        mysql_free_result(result);
+
+        return false;
+    }
+
+    mysql_free_result(timeResult);
+    mysql_free_result(result);
+
+    return true;
+}
+
+
+
 
 string user::encryptpass(){
     string password = "";

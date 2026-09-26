@@ -31,7 +31,7 @@ void student::loadCourse(string courseName, double grade, double creditHours)
 }
 
 
-void student::login(vector<user*>& users) {
+void student::login(vector<user*>& users,Database &db) {
     string inputUsername, inputPassword;
     user* account = nullptr;
     int unknownAccountAttempts = 0;

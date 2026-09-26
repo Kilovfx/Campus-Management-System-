@@ -54,7 +54,36 @@ static bool isAdminRole(const string& role) {
     return normalized == "admin";
 }
 
+bool canLockUser(Database& db, string username){
 
+    string Query =
+    "SELECT role FROM users WHERE username='" +
+    db.escapeString(username) + "'";
+
+    MYSQL_RES* result = db.executeSelect(Query);
+
+    if(result == nullptr){
+        cout << "User was not found\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout << "User was not found\n";
+        return false;
+    }
+
+    string role = row[0];
+
+    if(role == "Admin" || role == "admin"){
+        cout << "Cannot lock admin account!\n";
+        cout<<endl;
+        return false;
+    }
+
+    return true;
+}
 
 admin::admin(string username, string password, string role, int ID)
     : user(username, password, role, ID, "", "", "", false) {
@@ -241,6 +270,56 @@ vector<CourseInfo> admin::getCoursesForMajor(Database& db, string major){
     mysql_free_result(result);
 
     return courses;
+}
+
+bool admin::lockUserDatabase(Database &db,string username, int minutes){
+
+    string findQuery =
+    "SELECT user_id, role FROM users WHERE username='"
+    +db.escapeString(username) + "'";
+
+    MYSQL_RES* result = db.executeSelect(findQuery);
+
+    if(result == nullptr){
+        cout << "User not found\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout << "User does not exist\n";
+        mysql_free_result(result);
+        return false;
+    }
+    
+
+    int userID = stoi(row[0]);
+    string role = row[1];
+
+    mysql_free_result(result);
+
+
+    string lockQuery = 
+    "UPDATE account_security SET "
+    "locked=1, "
+    "failed_attempts=0, "
+    "locked_until=DATE_ADD(NOW(), INTERVAL "
+    + to_string(minutes) +
+    " MINUTE) "
+    "WHERE user_id=" + to_string(userID);
+
+    if(!db.executeQuery(lockQuery)){
+        cout<<"Failed locking user\n";
+        return false;
+    }
+
+    cout << "Rows affected: "
+     << mysql_affected_rows(db.getConnection())
+     << endl;
+
+    return true;
+
 }
 
 
@@ -514,7 +593,7 @@ string admin::encryptpass() {
 
 
 //message login for the admin
-void admin::login(vector<user*>& users){
+void admin::login(vector<user*>& users,Database &db){
     
     string username, password;
     int attempts = 0;
@@ -524,14 +603,18 @@ void admin::login(vector<user*>& users){
     while (true) {
         cout << "enter the username: ";
         cin >> username;
+
+        //handle error 1
         if (hasExtraInputOnLine()) {
             cout << "Invalid input: spaces are not allowed in usernames.\n";
             username.clear();
         }
 
+        //encrypted
         cout << "enter the password: ";
         password = encryptpass();
 
+        //search for the admin
         user* account = nullptr;
         for (auto* userAccount : users) {
             if (userAccount->getusername() == username &&
@@ -615,7 +698,7 @@ void admin::logout(){
 }
 
 
-void admin::lockUser(vector<user*>& users) {
+void admin::lockUser(vector<user*>& users,Database &db) {
     string lockedusername;
     int minute;
     ListAll(users);
@@ -623,36 +706,21 @@ void admin::lockUser(vector<user*>& users) {
     while (true) {
         cout << "Input the user you want to lock: ";
         cin >> lockedusername;
+
+        if(!canLockUser(db,lockedusername)){
+            return;
+        }
+
+        //handle error for username input
         if (hasExtraInputOnLine()) {
             cout << "Invalid input: spaces are not allowed in usernames.\n";
             continue;
         }
 
-        user* selectedUser = nullptr;
-        for (auto u : users) {
-            if (u->getusername() == lockedusername) {
-                selectedUser = u;
-                break;
-            }
-        }
-
-        if (selectedUser == nullptr) {
-            cout << "User not found.\n";
-            continue;
-        }
-
-        if (selectedUser == this || isAdminRole(selectedUser->getRole())) {
-            cout << "Cannot lock an admin account.\n";
-            continue;
-        }
-
-        if (!selectedUser->isActive()) {
-            cout << "Account already locked.\n";
-            continue;
-        }
-
         cout << "Enter lock duration in minutes: ";
         cin >> minute;
+
+        //handle error for minute input
         while (cin.fail() || minute <= 0 || hasExtraInputOnLine()) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -660,15 +728,17 @@ void admin::lockUser(vector<user*>& users) {
             cin >> minute;
         }
 
-        selectedUser->lockAccount(minute);
-        cout << "User " << lockedusername << " has been locked.\n";
-        addLog("Locked user: " + lockedusername);
+        if(lockUserDatabase(db,lockedusername, minute)){
+            cout <<"User "<<lockedusername <<" locked successfully\n";
+            addLog("Locked user: "+lockedusername);
+        }
+
         break;
     }
 } 
 
 
-void admin::unlockUser(vector<user*>& users) {
+void admin::unlockUser(vector<user*>& users,Database &db) {
     string unlockedusername;
 
     ListAll(users);
@@ -806,6 +876,20 @@ void admin::createuser(std::vector<user*>& users,Database& db, std::string usern
 
             // The ID is generated by this INSERT, so read it only afterwards.
             userID = db.getLastInsertID();
+
+
+            string securityQuery =
+            "INSERT INTO account_security "
+            "(user_id, failed_attempts, locked, locked_until, last_failed_attempt, last_login) "
+            "VALUES (" +
+            to_string(userID) +
+            ",0,0,NULL,NULL,NULL)";
+
+            if(!db.executeQuery(securityQuery)){
+                cout << "Failed creating account security.\n";
+                return;
+            }
+
             if (userID < 0) {
                 cout << "Failed to retrieve the new user's ID.\n";
                 return;
@@ -1729,6 +1813,8 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case LOCK_UNLOCK_USER:
             {
+                while(true){
+
                 int lockChoice;
                 cout << "1. Lock User\n";
                 cout << "2. Unlock User\n";
@@ -1744,11 +1830,15 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
                     cin >> lockChoice;
                 }
                 if(lockChoice == 1){
-                    lockUser(users);
+                    lockUser(users,db);
+                    continue;
                 } else if (lockChoice == 2) {
-                    unlockUser(users);
-                }
+                    unlockUser(users,db);
+                } else if (lockChoice == 3){
+                        break;
+                    } 
                 break;
+                }
             }
             case VIEW_USERS:
             {

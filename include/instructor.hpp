@@ -3,19 +3,13 @@
 
 #include "user.hpp"
 #include "database.hpp"
+#include "Course.hpp"
 #include <iostream>
 #include <map>
 #include <vector>
 
 using namespace std;
 
-struct CourseInfo {
-    string courseName;
-    int creditHours;
-
-    CourseInfo(const string& name = "", int credits = 0)
-        : courseName(name), creditHours(credits) {}
-};
 
 class instructor : public user {
     
@@ -25,7 +19,7 @@ public:
     instructor(string username, string password, string role, int ID,
                string first_name, string last_name, string major);
     static const map<string, vector<CourseInfo>>& getCourseCatalog();
-    void login(vector<user*>& users) override;
+    void login(vector<user*>& users,Database &db) override;
     void viewMyCourses(Database& db);
     bool authenticate(const string& username, const string& password, vector<user*>& users);
     void logout() override;
@@ -42,6 +36,7 @@ public:
     void assignCourse(const CourseInfo& course);
     void clearCourses();
     const vector<CourseInfo>& getCourses() const;
+    vector<CourseInfo> getCoursesForMajor(Database& db, string major);
     string encryptpass() override;
 };
 

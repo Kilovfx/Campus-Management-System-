@@ -3,7 +3,7 @@
 
 #include "user.hpp"
 #include "database.hpp"
-#include "instructor.hpp"
+#include "Course.hpp"
 #include <iostream>
 #include <string>
 #include <memory>
@@ -34,10 +34,10 @@ class admin : public user{
     admin(string username, string password, string role, int ID);
 
     // message for log in & log out 
-    void login(vector<user*>& users) override; 
+    void login(vector<user*>& users, Database& db) override;
     void logout() override;
-    void lockUser(vector<user*>& users);
-    void unlockUser(vector<user*>& users);
+    void lockUser(vector<user*>& users,Database &db);
+    void unlockUser(vector<user*>& users,Database &db);
     void showprofile() override;
     void ViewAllLog(vector<user*>& users);
     void ListAll(vector<user*>& users);
@@ -50,6 +50,7 @@ class admin : public user{
     bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
     bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
     bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
+    bool lockUserDatabase(Database &db,string username, int minutes);
     vector<CourseInfo> getCoursesForMajor(Database& db, string major);
     void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users,Database &db);

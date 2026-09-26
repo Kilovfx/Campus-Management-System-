@@ -25,7 +25,7 @@ const vector <CourseInfo>& instructor::getCourses() const {
 };
 
 
-void instructor::login(vector<user*>& users) {
+void instructor::login(vector<user*>& users,Database &db) {
     string inputUsername, inputPassword;
     int unknownAccountAttempts = 0;
     user* account = nullptr;
@@ -47,8 +47,8 @@ void instructor::login(vector<user*>& users) {
             }
         }
 
-        if (account != nullptr && !account->isActive()) {
-            cout << "Account is locked. Login is not available.\n";
+        if(account != nullptr && account->isUserLocked(db)){
+            cout <<"Account is locked. Login is not available.\n";
             return;
         }
 
@@ -114,15 +114,13 @@ void instructor::showprofile() {
 
 void instructor::viewMyCourses(Database &db){
 
-    cout << "DEBUG Instructor ID: " << ID << endl;
-
         string query =
         "SELECT c.course_name, c.credit_hours "
         "FROM courses c "
         "INNER JOIN instructor_courses ic "
         "ON ic.course_id = c.course_id "
         "WHERE ic.instructor_id = " + to_string(ID);
-        cout << query << endl;
+
 
     MYSQL_RES* result = db.executeSelect(query);
 
