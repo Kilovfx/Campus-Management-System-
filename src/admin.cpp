@@ -207,6 +207,143 @@ bool admin::changeUserRoleDatabase(Database &db,user* selectedUser,string newRol
 
 }
 
+vector<CourseInfo> admin::getCoursesForMajor(Database& db, string major){
+    vector<CourseInfo> courses;
+    string query =
+    "SELECT c.course_name, c.credit_hours "
+    "FROM courses c "
+    "INNER JOIN majors m ON c.major_id = m.major_id "
+    "WHERE m.major_name='" 
+    + db.escapeString(major) + "'";
+
+    MYSQL_RES* result = db.executeSelect(query);
+
+
+    if(result == nullptr)
+    {
+        return courses;
+    }
+
+
+    MYSQL_ROW row;
+
+    while((row = mysql_fetch_row(result)) != nullptr)
+    {
+        courses.push_back(
+            CourseInfo(
+                row[0],
+                stoi(row[1])
+            )
+        );
+    }
+
+
+    mysql_free_result(result);
+
+    return courses;
+}
+
+
+bool admin::assignCourseDatabase(Database &db,user* selectedInstructor,string courseName){
+
+     
+    int InstructorID = selectedInstructor->getID();
+
+
+    //check if instructor has two courses : 
+    string countQuery = 
+    "SELECT count(*) FROM instructor_courses WHERE instructor_id="
+    + to_string(InstructorID);
+
+    MYSQL_RES* countResult = db.executeSelect(countQuery);
+
+    if(countResult == nullptr){
+        cout <<"Failed to check instructor course \n";
+        return false;
+    }
+
+    MYSQL_ROW countrow = mysql_fetch_row(countResult);
+    
+    if(countrow == nullptr){
+        cout <<"This Instructor has no courses \n";
+        mysql_free_result(countResult);
+        return false;
+    }
+
+    int CountCourses = stoi(countrow[0]);
+    mysql_free_result(countResult);
+
+    if(CountCourses >= 2){
+        cout <<"Instructor already has 2 Courses"<<endl;
+        return false;
+    }
+
+    // get get Course ID 
+
+    string getCourseIDQuery = 
+    "SELECT course_id FROM courses WHERE course_name='"
+    + db.escapeString(courseName) + "'";
+
+    cout << "Searching course: [" << courseName << "]\n";
+    MYSQL_RES* result = db.executeSelect(getCourseIDQuery);
+
+    if(result == nullptr){
+        cout << "Course not found\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout << "Course not found\n";
+        mysql_free_result(result);
+        return false;
+    }
+
+    int courseID = stoi(row[0]);
+
+    mysql_free_result(result);
+
+    string dublicateQuery =
+    "SELECT * FROM instructor_courses WHERE instructor_id="
+    + to_string(InstructorID)
+    + " AND course_id="
+    + to_string(courseID);
+
+    MYSQL_RES* dubilcateCheck = db.executeSelect(dublicateQuery);
+
+    if(dubilcateCheck == nullptr){
+        return false;
+    }
+
+    MYSQL_ROW dubilcateRow = mysql_fetch_row(dubilcateCheck);
+
+    if(dubilcateRow != nullptr){
+
+        cout << "Instructor already has this course\n";
+        mysql_free_result(dubilcateCheck);
+        return false;
+
+    }
+
+    mysql_free_result(dubilcateCheck);
+
+    string insertQuery = 
+    "INSERT INTO instructor_courses(instructor_id,course_id) VALUES("
+    + to_string(InstructorID) 
+    + ","
+    + to_string(courseID) 
+    + ")";
+
+    if(!db.executeQuery(insertQuery)){
+        cout << "Failed to assign course\n";
+        return false;
+    }
+
+    return true;
+
+}
+
 bool admin::changeMajorDatabase(Database &db,user* selectedUser,string newMajor){
 
     int ID = selectedUser->getID();
@@ -1226,7 +1363,7 @@ void admin::changeMajor(vector<user*>& users,Database &db){
 }
 
 
-void admin::assignCourseForInstructor(vector<user*>& users)
+void admin::assignCourseForInstructor(vector<user*>& users,Database &db)
 {
     vector<instructor*> instructors;
 
@@ -1290,12 +1427,11 @@ void admin::assignCourseForInstructor(vector<user*>& users)
         selectedInstructor = instructors[instructorChoice - 1];
     }
 
-        const auto& catalog =
-            instructor::getCourseCatalog();
+        vector<CourseInfo> courses =
+        getCoursesForMajor(db, selectedInstructor->getMajor());
 
-    auto majorIt = catalog.find(selectedInstructor->getMajor());
 
-        if (majorIt == catalog.end())
+        if(courses.empty())
         {
             cout << "No courses found for this major.\n";
             return;
@@ -1314,12 +1450,12 @@ void admin::assignCourseForInstructor(vector<user*>& users)
             << selectedInstructor->getMajor()
             << " ---\n";
 
-        for (int i = 0; i < majorIt->second.size(); i++)
+        for(int i = 0; i < courses.size(); i++)
         {
             cout << i + 1 << ". "
-                << majorIt->second[i].courseName
-                << " (" << majorIt->second[i].creditHours
-                << " credits)\n";
+            << courses[i].courseName
+            << " (" << courses[i].creditHours
+            << " credits)\n";
         }
 
         int courseChoice;
@@ -1327,7 +1463,7 @@ void admin::assignCourseForInstructor(vector<user*>& users)
         while (true)
         {
             cout << "\nSelect a course (1-"
-                 << majorIt->second.size()
+                 << courses.size()
                  << ") or 0 to cancel: ";
 
             cin >> courseChoice;
@@ -1344,18 +1480,28 @@ void admin::assignCourseForInstructor(vector<user*>& users)
                 return;
 
             if (courseChoice < 1 ||
-                courseChoice > static_cast<int>(majorIt->second.size()))
+                courseChoice > static_cast<int>(courses.size()))
             {
                 cout << "Invalid choice. Please choose a course from the list.\n";
                 continue;
             }
 
-            CourseInfo selectedCourse =
-                majorIt->second[courseChoice - 1];
+            CourseInfo selectedCourse = courses[courseChoice - 1];
 
-            selectedInstructor->assignCourse(selectedCourse);
-            addLog("Assigned course " + selectedCourse.courseName +
-                   " to instructor " + selectedInstructor->getusername());
+            // Save to database first
+            if(assignCourseDatabase(db, selectedInstructor, selectedCourse.courseName))
+            {
+                // Update memory only if database succeeded
+                selectedInstructor->assignCourse(selectedCourse);
+
+                addLog("Assigned course " + selectedCourse.courseName +
+                " to instructor " + selectedInstructor->getusername());
+                cout << "Course assigned successfully.\n";
+
+            }
+            else {
+                   cout << "Failed to assign course.\n";
+                 }
             break;
         }
 }
@@ -1577,7 +1723,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case ASSIGN_COURSE:
             {
-                assignCourseForInstructor(users);
+                assignCourseForInstructor(users,db);
             }
             break;
 

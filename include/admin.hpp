@@ -48,11 +48,13 @@ class admin : public user{
     void asignrole(vector<user*>& users,Database &db,string username,string newRole);
     bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
     bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
+    bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
     void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users,Database &db);
-    void assignCourseForInstructor(vector<user*>& users);
+    void assignCourseForInstructor(vector<user*>& users,Database &db);
     string encryptpass() override;
 
 
 };
+
 #endif
