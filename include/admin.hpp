@@ -3,6 +3,7 @@
 
 #include "user.hpp"
 #include "database.hpp"
+#include "instructor.hpp"
 #include <iostream>
 #include <string>
 #include <memory>
@@ -49,6 +50,7 @@ class admin : public user{
     bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
     bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
     bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
+    vector<CourseInfo> getCoursesForMajor(Database& db, string major);
     void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users,Database &db);
     void assignCourseForInstructor(vector<user*>& users,Database &db);

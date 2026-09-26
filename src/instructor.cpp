@@ -112,62 +112,82 @@ void instructor::showprofile() {
 }
 
 
+void instructor::viewMyCourses(Database &db){
 
-const map<string, vector<CourseInfo>>& instructor::getCourseCatalog()
-{
+    cout << "DEBUG Instructor ID: " << ID << endl;
+
+        string query =
+        "SELECT c.course_name, c.credit_hours "
+        "FROM courses c "
+        "INNER JOIN instructor_courses ic "
+        "ON ic.course_id = c.course_id "
+        "WHERE ic.instructor_id = " + to_string(ID);
+        cout << query << endl;
+
+    MYSQL_RES* result = db.executeSelect(query);
+
+    if(result == nullptr){
+        cout <<"No courses found\n";
+        return;
+    }
+
+    MYSQL_ROW row;
+
+    cout <<"\n--- My Courses ---\n";
+
+    bool hasCourse = false;
+
+    while((row = mysql_fetch_row(result)) != nullptr)
+    {
+        hasCourse = true;
+
+        cout << "- "
+         << row[0]
+         << " ("
+         << row[1]
+         << " credits)"
+         << endl;
+    }
+
+    if(!hasCourse){
+        cout <<"You have no assigned courses.\n";
+    }
+
+    mysql_free_result(result);
+}
+
+const map<string, vector<CourseInfo>>& instructor::getCourseCatalog() {
     static const map<string, vector<CourseInfo>> courseCatalog = {
-
         {"Computer Science", {
-            CourseInfo("C++", 3),
-            CourseInfo("Data Structures", 3),
-            CourseInfo("Databases", 3),
-            CourseInfo("Operating Systems", 3),
+            CourseInfo("C++", 3), CourseInfo("Data Structures", 3),
+            CourseInfo("Databases", 3), CourseInfo("Operating Systems", 3),
             CourseInfo("Networks", 3)
         }},
-
         {"Electrical Engineering", {
-            CourseInfo("Circuit Analysis", 3),
-            CourseInfo("Electromagnetics", 3),
-            CourseInfo("Digital Systems", 3),
-            CourseInfo("Control Systems", 3)
+            CourseInfo("Circuit Analysis", 3), CourseInfo("Electromagnetics", 3),
+            CourseInfo("Digital Systems", 3), CourseInfo("Control Systems", 3)
         }},
-
         {"Business Administration", {
-            CourseInfo("Accounting", 3),
-            CourseInfo("Finance", 3),
-            CourseInfo("Organizational Behavior", 3),
-            CourseInfo("Business Ethics", 3)
+            CourseInfo("Accounting", 3), CourseInfo("Finance", 3),
+            CourseInfo("Organizational Behavior", 3), CourseInfo("Business Ethics", 3)
         }},
-
         {"Mechanical Engineering", {
-            CourseInfo("Thermodynamics", 3),
-            CourseInfo("Fluid Mechanics", 3),
-            CourseInfo("Dynamics", 3),
-            CourseInfo("Materials Science", 3)
+            CourseInfo("Thermodynamics", 3), CourseInfo("Fluid Mechanics", 3),
+            CourseInfo("Dynamics", 3), CourseInfo("Materials Science", 3)
         }},
-
         {"Civil Engineering", {
-            CourseInfo("Statics", 3),
-            CourseInfo("Structural Analysis", 3),
-            CourseInfo("Geotechnical Engineering", 3),
-            CourseInfo("Hydraulics", 3)
+            CourseInfo("Statics", 3), CourseInfo("Structural Analysis", 3),
+            CourseInfo("Geotechnical Engineering", 3), CourseInfo("Hydraulics", 3)
         }},
-
         {"Pharmacy", {
-            CourseInfo("Pharmacology", 3),
-            CourseInfo("Pharmaceutics", 3),
-            CourseInfo("Medicinal Chemistry", 3),
-            CourseInfo("Clinical Pharmacy", 3)
+            CourseInfo("Pharmacology", 3), CourseInfo("Pharmaceutics", 3),
+            CourseInfo("Medicinal Chemistry", 3), CourseInfo("Clinical Pharmacy", 3)
         }},
-
         {"Marketing", {
-            CourseInfo("Principles of Marketing", 3),
-            CourseInfo("Consumer Behavior", 3),
-            CourseInfo("Digital Marketing", 3),
-            CourseInfo("Brand Management", 3)
+            CourseInfo("Principles of Marketing", 3), CourseInfo("Consumer Behavior", 3),
+            CourseInfo("Digital Marketing", 3), CourseInfo("Brand Management", 3)
         }}
     };
-
     return courseCatalog;
 }
 
@@ -178,7 +198,6 @@ void instructor::listAllMajors() {
         cout << "- " << entry.first << "\n";
     }
 }
-
 
 
 void instructor::viewCoursesForMajor(const string& major) {
@@ -679,7 +698,7 @@ void instructor::clearCourses() {
 
 
 
-void instructor::showMenu(vector<user*>& users) {
+void instructor::showMenu(vector<user*>& users,Database &db) {
     int choice;
     do {
         cout << "\nInstructor Menu:\n";
@@ -691,14 +710,15 @@ void instructor::showMenu(vector<user*>& users) {
         cout << "6. View Students\n";
         cout << "7. List All Majors\n";
         cout << "8. Show Profile\n";
-        cout << "9. Logout\n";
+        cout << "9. View My Teaching Courses\n";
+        cout << "10. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         
-        if(cin.fail() || choice < 1 || choice > 9 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 10 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 9.\n";
+            cout << "Invalid input! Please enter a number between 1 and 10.\n";
             continue;  // ask for input again
         }
 
@@ -732,12 +752,15 @@ void instructor::showMenu(vector<user*>& users) {
                 showprofile();
                 break;
             case 9:
+                viewMyCourses(db);
+                break;
+            case 10:
                 logout();
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";
         }
-    } while (choice != 9);
+    } while (choice != 10);
 }
 
 string instructor::encryptpass() {

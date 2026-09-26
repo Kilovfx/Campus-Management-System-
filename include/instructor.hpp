@@ -1,4 +1,8 @@
+#ifndef INSTRUCTOR_HPP
+#define INSTRUCTOR_HPP
+
 #include "user.hpp"
+#include "database.hpp"
 #include <iostream>
 #include <map>
 #include <vector>
@@ -22,6 +26,7 @@ public:
                string first_name, string last_name, string major);
     static const map<string, vector<CourseInfo>>& getCourseCatalog();
     void login(vector<user*>& users) override;
+    void viewMyCourses(Database& db);
     bool authenticate(const string& username, const string& password, vector<user*>& users);
     void logout() override;
     void showprofile() override;
@@ -33,9 +38,11 @@ public:
     void listAllMajors();
     void viewCoursesForMajor(const string& major);
     void viewStudentCourses(vector<user*>& users);
-    void showMenu(vector<user*>& users);
+    void showMenu(vector<user*>& users,Database &db);
     void assignCourse(const CourseInfo& course);
     void clearCourses();
     const vector<CourseInfo>& getCourses() const;
     string encryptpass() override;
 };
+
+#endif

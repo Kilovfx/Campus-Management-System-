@@ -147,6 +147,7 @@ string testasignrole(vector<user*>& users,Database &db,string username,string ne
         }
 
         users.clear();
+        return "";
 }
 
 string testchangemajor(vector<user*>& users,Database &db){
@@ -183,4 +184,5 @@ string testchangemajor(vector<user*>& users,Database &db){
         }
 
         users.clear();
+        return "";
 }
