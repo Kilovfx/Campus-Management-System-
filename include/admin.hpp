@@ -34,7 +34,7 @@ class admin : public user{
     admin(string username, string password, string role, int ID);
 
     // message for log in & log out 
-    void login(vector<user*>& users, Database& db) override;
+    void login(vector<user*>& users,Database &db) override; 
     void logout() override;
     void lockUser(vector<user*>& users,Database &db);
     void unlockUser(vector<user*>& users,Database &db);
@@ -51,6 +51,7 @@ class admin : public user{
     bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
     bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
     bool lockUserDatabase(Database &db,string username, int minutes);
+    bool canLockUser(Database& db, string username);
     vector<CourseInfo> getCoursesForMajor(Database& db, string major);
     void changepassword(vector<user*>& users,Database& db);
     void changeMajor(vector<user*>& users,Database &db);

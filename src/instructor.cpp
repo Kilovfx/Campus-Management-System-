@@ -28,6 +28,7 @@ const vector <CourseInfo>& instructor::getCourses() const {
 void instructor::login(vector<user*>& users,Database &db) {
     string inputUsername, inputPassword;
     int unknownAccountAttempts = 0;
+    const int waitTime = 10;
     user* account = nullptr;
 
     while (true) {
@@ -60,16 +61,19 @@ void instructor::login(vector<user*>& users,Database &db) {
         }
 
         if (account != nullptr) {
-            account->increasedFailedAttempts();
-            if (!account->isActive()) {
+            account->increaseFailedAttempts(db);
+            if (account->isUserLocked(db)) {
                 cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
                 account->addLog("Instructor account locked after too many failed login attempts");
                 return;
             }
+
         } else {
             ++unknownAccountAttempts;
             if (unknownAccountAttempts >= 3) {
                 cout << "Login attempts exceeded\n";
+                cout << "You have made " << unknownAccountAttempts << " incorrect attempts. Please wait for " << waitTime << " seconds...\n";
+                this_thread::sleep_for(chrono::seconds(waitTime));
                 return;
             }
         }
@@ -78,6 +82,7 @@ void instructor::login(vector<user*>& users,Database &db) {
     }
 
     if (account != nullptr) {
+        account->resetFailedAttempts(db);
         this->username = inputUsername;
         cout << username << " logged in successfully as an Instructor.\n";
         addLog("Instructor logged in");

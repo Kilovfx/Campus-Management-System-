@@ -54,6 +54,7 @@ static bool isAdminRole(const string& role) {
     return normalized == "admin";
 }
 
+//check if admin handling error
 bool canLockUser(Database& db, string username){
 
     string Query =
@@ -598,7 +599,7 @@ void admin::login(vector<user*>& users,Database &db){
     string username, password;
     int attempts = 0;
     const int maxAttempts = 3;
-    const int waitTime = 10;
+    
 
     while (true) {
         cout << "enter the username: ";
@@ -624,20 +625,39 @@ void admin::login(vector<user*>& users,Database &db){
             }
         }
 
+        if(account !=nullptr && account->isUserLocked(db)){
+            cout << "Account is locked. Login is not available.\n";
+            return;
+        }
+
         if (account != nullptr &&
             verifypassword(password, account->getpassword())) {
+            account->recordLoginAttempts(db,true);
+            account->resetFailedAttempts(db);
+            attempts = 0;
             this->username = username;
             cout << "User : " << username << " logged in successfully!\n";
             addLog("Admin logged in");
             return;
         }
 
+        if(account !=nullptr){
+            account->recordLoginAttempts(db,false);
+
+            bool locked = account->increaseFailedAttempts(db);
+
+            if(locked){
+                cout << "Admin account locked after too many failed attempts.\n";
+                return;
+            }
+        }
+
         attempts++;
 
         if(attempts >= maxAttempts) {
+            int waitTime = 5 * attempts;
             cout << "You have made " << attempts << " incorrect attempts. Please wait for " << waitTime << " seconds...\n";
             this_thread::sleep_for(chrono::seconds(waitTime));
-            attempts = 0;
             cout << "You can now try again.\n";
         }
 
@@ -782,7 +802,7 @@ void admin::unlockUser(vector<user*>& users,Database &db) {
             continue;
         }
 
-        selectedUser->resetFailedAttempts();
+        selectedUser->resetFailedAttempts(db);
 
         cout << "User " << unlockedusername << " has been unlocked.\n";
         addLog("Unlocked user: " + unlockedusername);

@@ -35,16 +35,68 @@ bool user::isActive(){
     return !accountLocked;
 }
 
-void user::increasedFailedAttempts(){
-    failedAttempts++;
-    if(failedAttempts >= 6){
-        accountLocked = true;
-        lockedUntil = time(nullptr) + accountLockDurationSeconds;
+bool user::increaseFailedAttempts(Database &db){
+
+    string query =
+    "UPDATE account_security "
+    "SET failed_attempts = failed_attempts + 1, "
+    "last_failed_attempt = NOW() "
+    "WHERE user_id=" + to_string(ID);
+
+    if(!db.executeQuery(query)){
+        return false;
     }
+
+    //check attempts
+    string checkQuery = 
+    "SELECT failed_attempts " 
+    "FROM account_security "
+    "WHERE user_id=" + to_string(ID);
+
+    MYSQL_RES* result = db.executeSelect(checkQuery);
+
+    if(result == nullptr){
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        mysql_free_result(result);
+        return false;
+    } 
+        int attempts = stoi(row[0]);
+
+        cout << "Failed attempts: " << attempts <<endl;
+
+        if(attempts >= 6){
+            string lockQuery = 
+            "UPDATE account_security SET "
+            "locked=1, "
+            "locked_until=DATE_ADD(NOW(), INTERVAL 1 MINUTE) "
+            "WHERE user_id=" + to_string(ID);
+
+            if(db.executeQuery(lockQuery)){
+                cout << "Account locked due to failed attempts\n";
+                mysql_free_result(result);
+                return true;
+            }
+        }
+
+        mysql_free_result(result);
+        return false;
 }
 
-void user::resetFailedAttempts(){
-    failedAttempts = 0;
+
+void user::resetFailedAttempts(Database &db){
+    
+    string query =
+    "UPDATE account_security SET "
+    "failed_attempts=0, "
+    "last_login=NOW() "
+    "WHERE user_id=" + to_string(ID);
+
+    db.executeQuery(query);
 }
 
 void user::lockAccount(int durationMinutes){
@@ -177,7 +229,9 @@ bool user::isUserLocked(Database &db){
         // unlock automatically
         string unlock =
         "UPDATE account_security SET "
-        "locked=0, failed_attempts=0 "
+        "locked=0, "
+        "failed_attempts=0, "
+        "locked_until=NULL "
         "WHERE user_id=" + to_string(ID);
 
         db.executeQuery(unlock);
@@ -195,7 +249,19 @@ bool user::isUserLocked(Database &db){
 }
 
 
+void user::recordLoginAttempts(Database &db,bool success){
 
+        string query =
+        "INSERT INTO login_attempts "
+        "(username_attempted,success,attempt_time) VALUES('"
+        + db.escapeString(username)
+        +"',"
+        + to_string(success)
+        +",NOW())";
+
+        db.executeQuery(query);
+
+}
 
 string user::encryptpass(){
     string password = "";
