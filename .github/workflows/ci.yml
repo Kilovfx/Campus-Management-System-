@@ -47,7 +47,7 @@ jobs:
                 Select-Object Name, Status
 
 
-      - name: Start MySQL server
+      - name: Start MySQL and load test database
         shell: pwsh
         run: |
             $mysqld = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
@@ -57,46 +57,48 @@ jobs:
 
             New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 
-            Write-Host "Initializing MySQL data directory..."
+            Write-Host "Initializing MySQL..."
             & $mysqld --initialize-insecure --datadir="$dataDir" --console
 
             Write-Host "Starting MySQL server..."
-            Start-Process $mysqld `
-                -ArgumentList "--datadir=$dataDir", "--port=3306", "--console" `
-                -NoNewWindow
+
+            $server = Start-Process $mysqld `
+                -ArgumentList @(
+                    "--datadir=$dataDir",
+                    "--port=3306",
+                    "--console"
+                ) `
+                -NoNewWindow `
+                -PassThru
 
             Write-Host "Waiting for MySQL..."
 
             for ($i = 1; $i -le 30; $i++) {
-                try {
-                    & $mysql -u root --skip-password -e "SELECT VERSION();" 2>$null
 
-                    if ($LASTEXITCODE -eq 0) {
-                        Write-Host "MySQL is ready!"
-                        exit 0
-                    }
-                }
-                catch {
+                & $mysql -u root --skip-password -e "SELECT 1;" 2>$null
+
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "MySQL is ready!"
+                    break
                 }
 
                 Start-Sleep -Seconds 1
             }
 
-            throw "MySQL did not start"
+            if ($LASTEXITCODE -ne 0) {
+                throw "MySQL did not start"
+            }
 
-      - name: Load test database
-        shell: pwsh
-        run: |
-            $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+            Write-Host "Loading test database..."
 
-            Get-Content "database/tests/ci_test_database.sql" -Raw |
+            Get-Content "database/test/sql/ci_test_database.sql" -Raw |
                 & $mysql -u root --skip-password
 
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to load test database"
             }
 
-            Write-Host "Test database loaded successfully"    
+            Write-Host "Test database loaded successfully"  
             
             
       - name: Find MySQL
