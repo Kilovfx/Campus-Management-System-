@@ -51,18 +51,38 @@ jobs:
         shell: pwsh
         run: |
             $mysqld = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
+            $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 
-            if (-not (Test-Path $mysqld)) {
-                throw "mysqld.exe was not found"
-            }
+            $dataDir = "$env:RUNNER_TEMP\mysql-data"
 
+            New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+            Write-Host "Initializing MySQL data directory..."
+            & $mysqld --initialize-insecure --datadir="$dataDir" --console
+
+            Write-Host "Starting MySQL server..."
             Start-Process $mysqld `
-                -ArgumentList "--console" `
+                -ArgumentList "--datadir=$dataDir", "--port=3306", "--console" `
                 -NoNewWindow
 
-            Start-Sleep -Seconds 5
+            Write-Host "Waiting for MySQL..."
 
-            mysql -u root -e "SELECT VERSION();"
+            for ($i = 1; $i -le 30; $i++) {
+                try {
+                    & $mysql -u root --skip-password -e "SELECT VERSION();" 2>$null
+
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host "MySQL is ready!"
+                        exit 0
+                    }
+                }
+                catch {
+                }
+
+                Start-Sleep -Seconds 1
+            }
+
+            throw "MySQL did not start"
 
 
       - name: Find MySQL
