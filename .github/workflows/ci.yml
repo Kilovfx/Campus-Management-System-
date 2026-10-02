@@ -30,6 +30,24 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
 
+            
+      - name: Check MySQL
+        shell: pwsh
+        run: |
+                $mysql = Get-Command mysql.exe -ErrorAction SilentlyContinue
+
+                if (-not $mysql) {
+                    throw "mysql.exe was not found"
+                }
+
+                mysql --version
+
+                Get-Service |
+                Where-Object { $_.Name -match "mysql" } |
+                Select-Object Name, Status
+
+
+
       - name: Find MySQL
         shell: pwsh
         run: |
@@ -77,6 +95,6 @@ jobs:
           cmake --build build
 
       - name: Run tests
-        shell: mysys2 {0}
+        shell: msys2 {0}
         run: |
             ./build/Test_app.exe
