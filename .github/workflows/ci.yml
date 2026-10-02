@@ -84,7 +84,21 @@ jobs:
 
             throw "MySQL did not start"
 
+      - name: Load test database
+        shell: pwsh
+        run: |
+            $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 
+            Get-Content "database/tests/ci_test_database.sql" -Raw |
+                & $mysql -u root --skip-password
+
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to load test database"
+            }
+
+            Write-Host "Test database loaded successfully"    
+            
+            
       - name: Find MySQL
         shell: pwsh
         run: |
