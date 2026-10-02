@@ -69,7 +69,7 @@ void student::login(vector<user*>& users,Database &db) {
             account->increaseFailedAttempts(db);
             if (!account->isUserLocked(db)) {
                 cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
-                account->addLog("Student account locked after too many failed login attempts");
+                account->addLog(db, "Student account locked after too many failed login attempts");
                 return;
             }
         } else {
@@ -86,7 +86,7 @@ void student::login(vector<user*>& users,Database &db) {
     if (account != nullptr) {
         this->username = inputUsername;
         cout << username << " logged in successfully.\n";
-        addLog("Student logged in");
+        addLog(db, "Student logged in");
     } else {
         cout << "Invalid credentials. Login failed.\n";
     }
@@ -104,11 +104,11 @@ bool student::authenticate(const string& username, const string& password, vecto
     return false;
 }
 
-void student::logout() {
+void student::logout(Database& db) {
     cout << username << " logged out.\n";
 }
 
-void student::showprofile() {
+void student::showprofile(Database& db) {
     cout << "Student Profile\n";
     cout << "----------------\n";
     cout << "Name: " << first_name << " " << last_name << endl;
@@ -118,7 +118,7 @@ void student::showprofile() {
     // Date of account creation
     char* dt = ctime(&creationDate);
     cout << "Account created on: " << dt << endl;
-    addLog("Viewed profile");
+    addLog(db,"Viewed profile");
 }
 
 void student::addCourse(string courseName, int creditHours) {
@@ -139,7 +139,7 @@ bool student::hasCourse(const string& courseName) const {
     return false;
 }
 
-void student::removeCourse(string courseName) {
+void student::removeCourse(string courseName,Database &db) {
     auto it = remove_if(enrolledCourses.begin(), enrolledCourses.end(),
         [&](const CourseGrade& course) { return course.courseName == courseName; });
     if (it != enrolledCourses.end()) {
@@ -155,12 +155,12 @@ std::vector<CourseGrade>& student::getEnrolledCourses() {
     return enrolledCourses;
 }
 
-void student::viewCourses() {
+void student::viewCourses(Database& db) {
     cout << "Courses for " << username << ":\n";
     for (const auto& course : enrolledCourses) {
         cout << course.courseName << " (" << course.creditHours << " credits)" << endl;
     }
-    addLog("Viewed courses");
+    addLog(db,"Viewed courses");
 }
 
 void student::ShowGrades(){
@@ -198,7 +198,7 @@ void student::ShowGrades(){
 }
 
 
-void student::showMenu(std::vector<user*>& users) {
+void student::showMenu(std::vector<user*>& users,Database& db) {
     int choice;
     do {
         cout << "\nStudent Menu:\n";
@@ -219,16 +219,16 @@ void student::showMenu(std::vector<user*>& users) {
 
         switch (choice) {
             case 1:
-                viewCourses();
+                viewCourses(db);
                 break;
             case 2:
                 ShowGrades();
                 break;
             case 3:
-                showprofile();
+                showprofile(db);
                 break;
             case 4:
-                logout();
+                logout(db);
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";

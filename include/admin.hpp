@@ -35,7 +35,7 @@ class admin : public user{
 
     // loggin & loggout
     void login(vector<user*>& users,Database &db) override; 
-    void logout() override;
+    void logout(Database& db) override;
 
 
     //lock user & unlock user
@@ -46,12 +46,18 @@ class admin : public user{
     bool unlockuserDatabase(Database& db, string username);
 
     //show
-    void showprofile() override;
+    void showprofile(Database& db) override;
     void Showmeniu(vector<user*>& users,Database& db);
 
-    //veiw functions
+    //veiw log functions - > for refactoring and CI/CD & unit Test practice
+    void ViewlogMenu(Database& db);
     void ViewAllLog(Database& db);
-    void ListAll(vector<user*>& users);
+    bool ViewLogByID(Database& db,int logID);
+    bool ViewLogsByUserID(Database &db,int userID);
+
+
+    //List all users
+    void ListAll(vector<user*>& users,Database& db);
     
     // create user functions
     void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);

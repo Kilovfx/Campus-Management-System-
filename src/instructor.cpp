@@ -70,7 +70,7 @@ void instructor::login(vector<user*>& users,Database &db) {
             this->username = inputUsername;
 
             cout << "User : " << username << " logged in successfully!\n";
-            addLog("Instructor logged in");
+            addLog(db,"Instructor logged in");
             return;
         }
 
@@ -82,7 +82,7 @@ void instructor::login(vector<user*>& users,Database &db) {
 
             if(locked) {
                 cout << "Admin account locked after too many failed attempts.\n";
-                account->addLog("Instructor account locked after too many failed attempts");
+                account->addLog(db,"Instructor account locked after too many failed attempts");
                 return;
             }
         }
@@ -109,11 +109,11 @@ void instructor::login(vector<user*>& users,Database &db) {
     }
 }
 
-void instructor::logout() {
+void instructor::logout(Database& db) {
     cout << username << " logged out.\n";
 }
 
-void instructor::showprofile() {
+void instructor::showprofile(Database& db) {
     cout << "Instructor Profile\n";
     cout << "----------------\n";
     cout << "Name: " << first_name << " " << last_name << endl;
@@ -411,7 +411,7 @@ void instructor::addCourse(vector<user*>& users) {
 
 
 
-void instructor::removeCourse(vector<user*>& users) {
+void instructor::removeCourse(vector<user*>& users,Database& db) {
     cout << "\n--- Students List ---\n";
     vector<student*> studentList;
     int studentCount = 0;
@@ -473,7 +473,7 @@ void instructor::removeCourse(vector<user*>& users) {
     }
 
     string courseName = enrolledCourses[courseChoice - 1].courseName;
-    selectedStudent->removeCourse(courseName);
+    selectedStudent->removeCourse(courseName,db);
 
     bool courseStillAssigned = false;
     for (const auto& user : users) {
@@ -740,7 +740,7 @@ void instructor::showMenu(vector<user*>& users,Database &db) {
                 break;
             }
             case 2: {
-                removeCourse(users);
+                removeCourse(users,db);
                 break;
             }
             case 3:{
@@ -761,13 +761,13 @@ void instructor::showMenu(vector<user*>& users,Database &db) {
                 listAllMajors();
                 break;
             case 8:
-                showprofile();
+                showprofile(db);
                 break;
             case 9:
                 viewMyCourses(db);
                 break;
             case 10:
-                logout();
+                logout(db);
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";

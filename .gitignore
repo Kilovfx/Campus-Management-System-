@@ -17,6 +17,6 @@ cmake_install.cmake
 .vscode/
 
 # Old build scripts
-database.cpp
+db_config.hpp
 script.bat
 test.bat

@@ -21,11 +21,11 @@ public:
     static const map<string, vector<CourseInfo>>& getCourseCatalog();
     void login(vector<user*>& users,Database &db) override;
     void viewMyCourses(Database& db);
-    void logout() override;
-    void showprofile() override;
+    void logout(Database& db) override;
+    void showprofile(Database& db) override;
     void addCourse(vector<user*>& users);
     void addGrade(vector<user*>& users); 
-    void removeCourse(vector<user*>& users);
+    void removeCourse(vector<user*>& users,Database& db);
     void viewCourses(vector<user*>& users);
     void viewStudents(vector<user*>& users);
     void listAllMajors();

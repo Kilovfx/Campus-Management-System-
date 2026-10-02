@@ -2,6 +2,7 @@
 #define STUDENT_HPP
 
 #include "user.hpp"  // Include the base class header
+#include "database.hpp"
 #include <string>
 #include <vector>
 #include <cmath>
@@ -23,17 +24,17 @@ public:
 
     void login(std::vector<user*>& users,Database &db) override;
     bool authenticate(const std::string& username, const std::string& password, std::vector<user*>& users);
-    void logout() override;
-    void showprofile() override;
+    void logout(Database& db) override;
+    void showprofile(Database& db) override;
     void addCourse(std::string courseName, int creditHours = 0);
     void loadCourse(std::string courseName, double grade, double creditHours);
     bool hasCourse(const std::string& courseName) const;
-    void removeCourse(std::string courseName);
+    void removeCourse(std::string courseName,Database& db);
     std::vector<CourseGrade>& getEnrolledCourses();
     const std::vector<CourseGrade>& getEnrolledCourses() const;
     void ShowGrades();
-    void viewCourses();
-    void showMenu(std::vector<user*>& users);
+    void viewCourses(Database& db);
+    void showMenu(std::vector<user*>& users,Database& db);
     std::string encryptpass() override;
 
     double ConvertGradeToGPA(double grade); 

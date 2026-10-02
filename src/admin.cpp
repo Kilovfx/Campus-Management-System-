@@ -639,7 +639,7 @@ bool admin::insertInstructor(Database &db,int userID,string first_name,string la
 }
 
 
-void admin::showprofile(){
+void admin::showprofile(Database& db){
     cout<<"\nAdmin Profile\n";
     cout << "Username: " << username << endl;
     cout << "ID: " << ID << endl;
@@ -766,12 +766,12 @@ void admin::login(vector<user*>& users,Database &db){
         }
 
         if (account != nullptr && account->authenticate(username,password)) {
-            account->recordLoginAttempts(db,username,true);
+            user::recordLoginAttempts(db,username,true);
             account->resetFailedAttempts(db);
             attempts = 0;
             this->username = username;
             cout << "User : " << username << " logged in successfully!\n";
-            addLog("Admin logged in");
+            addLog(db,"Admin logged in");
             return;
 
         }
@@ -786,7 +786,7 @@ void admin::login(vector<user*>& users,Database &db){
 
             if(locked){
                 cout << "Admin account locked after too many failed attempts.\n";
-                account->addLog("Admin account locked after too many failed attempts");
+                account->addLog(db,"Admin account locked after too many failed attempts");
                 return;
             }
         }
@@ -813,13 +813,140 @@ void admin::login(vector<user*>& users,Database &db){
 
         cout << "Invalid credentials. Please try again.\n";
     }
+
+
+
 } 
 
-
-
-
 void admin::ViewAllLog(Database& db){
-    int choice; 
+
+    string Allquery;
+    "SELECT l.log_id, l.user_id, u.username, "
+    "l.message, l.log_time "
+    "FROM `log` l "
+    "LEFT JOIN users u "
+    "ON l.user_id = u.user_id "
+    "ORDER BY l.log_id DESC";
+
+    MYSQL_RES* result = db.executeSelect(Allquery);
+
+    if(result == nullptr){
+        cout << "Failed to retrieve logs.\n";
+        return;       
+    }
+
+    MYSQL_ROW row;
+    bool found = false;  
+
+    cout << "\n--- All Logs ---\n";
+
+    while((row = mysql_fetch_row(result)) != nullptr){
+
+        found = true;
+
+        cout << "Log ID: " << row[0]
+             << " | User ID: " << row[1]
+             << " | Username: "
+             << (row[2] ? row[2] : "Deleted User")
+             << " | Message: " << row[3]
+             << " | Time: " << row[4]
+             << endl;
+    }  
+
+    if(!found){
+        cout << "No logs found.\n";
+    }
+
+    mysql_free_result(result);
+}
+
+bool admin::ViewLogByID(Database& db,int logID){
+
+    string query =
+    "SELECT l.log_id, l.user_id, u.username, "
+    "l.message, l.log_time "
+    "FROM `log` l "
+    "LEFT JOIN users u "
+    "ON l.user_id = u.user_id "
+    "WHERE l.log_id=" + to_string(logID);
+
+    MYSQL_RES* result = db.executeSelect(query);
+
+    if(result == nullptr){
+        cout << "Failed to retrieve log.\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout << "Log not found.\n";
+        mysql_free_result(result);
+        return false;
+    }   
+
+
+    cout << "\n--- Log ---\n";
+    cout << "Log ID: " << row[0]
+         << " | User ID: " << row[1]
+         << " | Username: "
+         << (row[2] ? row[2] : "Deleted User")
+         << " | Message: " << row[3]
+         << " | Time: " << row[4]
+         << endl;  
+
+    mysql_free_result(result);
+    return true;
+}
+
+bool admin::ViewLogsByUserID(Database &db,int userID){
+
+    string query =
+    "SELECT l.log_id, l.user_id, u.username, "
+    "l.message, l.log_time "
+    "FROM `log` l "
+    "LEFT JOIN users u "
+    "ON l.user_id = u.user_id "
+    "WHERE l.user_id=" + to_string(userID) +
+    " ORDER BY l.log_id DESC";
+
+    MYSQL_RES* result = db.executeSelect(query);
+
+    if(result == nullptr){
+        cout << "Failed to retrieve logs.\n";
+        return false;
+    }
+
+    MYSQL_ROW row;
+    bool found = false;
+
+    cout << "\n--- User Logs ---\n";
+
+    while((row = mysql_fetch_row(result)) != nullptr){
+
+        found = true;
+
+        cout << "Log ID: " << row[0]
+             << " | User ID: " << row[1]
+             << " | Username: "
+             << (row[2] ? row[2] : "Deleted User")
+             << " | Message: " << row[3]
+             << " | Time: " << row[4]
+             << endl;
+    }
+
+    if(!found){
+        cout << "No logs found for this user.\n";
+    }
+
+    mysql_free_result(result);
+
+    return found;
+}
+
+void admin::ViewlogMenu(Database& db){
+
+    int choice;
 
     while(true){
 
@@ -831,113 +958,69 @@ void admin::ViewAllLog(Database& db){
         cout << "Enter your choice: ";
         cin >> choice;
 
-        while(cin.fail() || choice < 0 || choice > 3 || hasExtraInputOnLine){
+        while(cin.fail() || choice < 0 || choice > 3 || hasExtraInputOnLine()){
+
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-            cout <<"Invalid choice. Enter 0-3: ";
+            cout << "Invalid choice. Enter 0-3: ";
             cin >> choice;
         }
 
-        if(choice == 0)
+        if(choice == 0){
             break;
-
-        string query;
-
-        //list all log
-        if(choice == 1){
-
-            query = 
-            "SELECT l.log_id, l.user_id, u.username, l.message, l.log_time "
-            "FROM logs l "
-            "LEFT JOIN users u "
-            "ON l.user_id = u.user_id "
-            "ORDER BY l.log_id DESC";
         }
 
-        //search by logID
+        if(choice == 1){
+            ViewAllLog(db);
+        }
+
         else if(choice == 2){
+
             int logID;
 
-            cout << "Enter log ID: ";
+            cout << "Enter Log ID: ";
             cin >> logID;
+
             while(cin.fail() || logID <= 0 || hasExtraInputOnLine()){
 
                 cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(),'\n');
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-                cout <<"Invalid Log ID. Enter a positive number: ";
+                cout << "Invalid Log ID. Enter a positive number: ";
                 cin >> logID;
             }
 
-            query =
-            "SELECT l.log_id, l.user_id, u.username, l.message, l.log_time "
-            "FROM logs l "
-            "LEFT JOIN users u "
-            "ON l.user_id = u.user_id "
-            "WHERE l.log_id=" + to_string(logID);
+            ViewLogByID(db, logID);
         }
-
-        //search by user ID
 
         else if(choice == 3){
 
             int userID;
 
-            cout <<"Enter user ID: ";
-            cin >>userID;
-            while(cin.fail() || userID <= 0 || hasExtraInputOnLine()){
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(),'\n');
+            cout << "Enter User ID: ";
+            cin >> userID;
 
-                cout <<"Invalid user ID. Enter a positive number: ";
+            while(cin.fail() || userID <= 0 || hasExtraInputOnLine()){
+
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                cout << "Invalid User ID. Enter a positive number: ";
                 cin >> userID;
             }
 
-            query = 
-            "SELECT l.log_id, l.user_id, u.username, "
-            "l.message, l.log_time "
-            "FROM `log` l "
-            "LEFT JOIN users u "
-            "ON l.user_id = u.user_id "
-            "WHERE l.user_id=" + to_string(userID) +
-            " ORDER BY l.log_id DESC";
+            ViewLogsByUserID(db, userID);
         }
-
-        MYSQL_RES* result = db.executeSelect(query);
-
-        if(result == nullptr){
-            cout << "Failed to retrieve logs.\n";
-            continue;
-        }
-
-        MYSQL_ROW row;
-        bool found = false;
-
-        cout << "\n--- Logs ---\n";
-
-        while((row = mysql_fetch_row(result)) != nullptr){
-
-            found = true;
-
-            cout << "Log ID: " << row[0]
-                 << " | User ID: " << row[1]
-                 << " | Username: "
-                 << (row[2] ? row[2] : "Deleted User")
-                 << " | Message: " << row[3]
-                 << " | Time: " << row[4]
-                 << endl;
-        }
-        if(!found){
-            cout << "No logs found.\n";
-        }
-
-        mysql_free_result(result);
     }
 }
 
 
-void admin::ListAll(vector<user*>& users){
+
+
+
+
+void admin::ListAll(vector<user*>& users,Database& db){
     for(auto& user : users){
         cout << "Username: " << user->getusername()
              << " | ID: " << user->getID()
@@ -967,22 +1050,22 @@ void admin::ListAll(vector<user*>& users){
     }
 
     // ONE log only
-    addLog("Listed all users");
+    addLog(db,"Listed all users");
 }
 
 
 
 //message logout for the admin
-void admin::logout(){
+void admin::logout(Database& db){
     cout <<"Admin: " << username <<" logged out!";
-    addLog("Admin logged out."); // count the logs for the admin 
+    addLog(db,"Admin logged out."); // count the logs for the admin 
 }
 
 
 void admin::lockUser(vector<user*>& users,Database &db) {
     string lockedusername;
     int minute;
-    ListAll(users);
+    ListAll(users,db);
     
     while (true) {
         cout << "Input the user you want to lock: ";
@@ -1011,7 +1094,7 @@ void admin::lockUser(vector<user*>& users,Database &db) {
 
         if(lockUserDatabase(db,lockedusername, minute)){
             cout <<"User "<<lockedusername <<" locked successfully\n";
-            addLog("Locked user: "+lockedusername);
+            addLog(db,"Locked user: "+lockedusername);
         }
 
         break;
@@ -1022,7 +1105,7 @@ void admin::lockUser(vector<user*>& users,Database &db) {
 void admin::unlockUser(vector<user*>& users,Database &db) {
     string unlockedusername;
 
-    ListAll(users);
+    ListAll(users,db);
 
     while (true) {
 
@@ -1061,7 +1144,7 @@ void admin::unlockUser(vector<user*>& users,Database &db) {
         if (unlockuserDatabase(db,unlockedusername)){
             cout <<"User " << unlockedusername << " has been unlocked.\n";
 
-            addLog("Unlocked user: " + unlockedusername);
+            addLog(db,"Unlocked user: " + unlockedusername);
         }
 
         break;
@@ -1085,14 +1168,14 @@ void admin::createuser(vector<user*>& users,Database& db, string username, strin
         //handling error 2
         if (isBlank(first_name) || isBlank(last_name)) {
             cout << "Error: First name and last name cannot be empty.\n";
-            addLog("Failed to create user: " + username + " - Name is empty");
+            addLog(db,"Failed to create user: " + username + " - Name is empty");
             return;
         }
 
         // Check if username already exists
         if(usernameexist(db,username)){
             cout <<"Username already exists\n";
-            addLog("Failed creating user: username already exists");
+            addLog(db,"Failed creating user: username already exists");
             return;
         }
 
@@ -1169,7 +1252,7 @@ void admin::createuser(vector<user*>& users,Database& db, string username, strin
 
             users.push_back(newUser);  // Add the new user to the vector
             cout << "User " << username << " with role " << role << " created successfully with ID: " << userID << "\n";
-            addLog("Created user: " + username + " with role: " + role);
+            addLog(db,"Created user: " + username + " with role: " + role);
             
         }
           
@@ -1389,7 +1472,7 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
     // Prevent deleting the currently logged-in admin
     if (selectedUsername == this->username) {
         cout << "Cannot delete the currently logged-in admin account.\n";
-        addLog("Attempted to delete own admin account (prevented)");
+        addLog(db,"Attempted to delete own admin account (prevented)");
         return;
     }
 
@@ -1418,7 +1501,7 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
     // Check if user cancelled the deletion
     if(confirm != 'y' && confirm != 'Y') {
         cout << "Deletion cancelled.\n";
-        addLog("Cancelled deletion of user: " + selectedUsername);
+        addLog(db,"Cancelled deletion of user: " + selectedUsername);
         return;
     }
 
@@ -1455,7 +1538,7 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
             << " | Role: " << selectedRole
             << " has been deleted successfully! \n";
 
-        addLog("Deleted user: " + selectedUsername);
+        addLog(db,"Deleted user: " + selectedUsername);
     }
 }
 
@@ -1481,7 +1564,7 @@ void admin::asignrole(vector<user*>& users,Database &db,string username,string n
                      << " has been updated to: "
                      << newRole << "\n";
 
-                addLog("Changed role for user "
+                addLog(db,"Changed role for user "
                        + username +
                        " to " + newRole);
             }
@@ -1495,7 +1578,7 @@ void admin::asignrole(vector<user*>& users,Database &db,string username,string n
 
 void admin::changepassword(vector<user*>& users,Database& db){
     // List all users first
-    ListAll(users);
+    ListAll(users,db);
     cout << "\n";
     
     // Ask admin to choose which user's password to change
@@ -1537,7 +1620,7 @@ void admin::changepassword(vector<user*>& users,Database& db){
                 cin >> retry;
 
                 if(retry == 'N' || retry == 'n'){
-                    addLog("Cancelled password change operation for non-existent user: " + targetUsername);
+                    addLog(db,"Cancelled password change operation for non-existent user: " + targetUsername);
                     return;
                 }
             }
@@ -1553,7 +1636,7 @@ void admin::changepassword(vector<user*>& users,Database& db){
     
     if(!verifypassword(adminPassword,this->password)) {
         cout << "Invalid password!\n";
-        addLog("Failed password change attempt for user: " + targetUsername + " (invalid admin password)");
+        addLog(db,"Failed password change attempt for user: " + targetUsername + " (invalid admin password)");
         return;
     }
     
@@ -1587,7 +1670,7 @@ void admin::changepassword(vector<user*>& users,Database& db){
         if(!db.executeQuery(query)){
 
             cout << "Failed to update password in the database.\n";
-            addLog("Failed database password update for user: "
+            addLog(db,"Failed database password update for user: "
                    + targetUsername);
             return;
 
@@ -1599,7 +1682,7 @@ void admin::changepassword(vector<user*>& users,Database& db){
              << targetUsername
              << " has been changed successfully.\n";
 
-        addLog("Changed password for user: " + targetUsername);
+        addLog(db,"Changed password for user: " + targetUsername);
         break;
         
     }
@@ -1694,7 +1777,7 @@ void admin::changeMajor(vector<user*>& users,Database &db){
          << "\n";
 
 
-    addLog("Changed major for "
+    addLog(db,"Changed major for "
            + selectedUser->getusername()
            + " to "
            + newMajor);
@@ -1838,7 +1921,7 @@ void admin::assignCourseForInstructor(vector<user*>& users,Database &db)
                 // Update memory only if database succeeded
                 selectedInstructor->assignCourse(selectedCourse);
 
-                addLog("Assigned course " + selectedCourse.courseName +
+                addLog(db,"Assigned course " + selectedCourse.courseName +
                 " to instructor " + selectedInstructor->getusername());
                 cout << "Course assigned successfully.\n";
 
@@ -1999,7 +2082,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
                        index++; // to move next charachters
                        if(index == 4) index = 0; // reset to redo the loading animation
                     }
-                    ListAll(users);
+                    ListAll(users,db);
                     cout << "\n";
                     cout << "Enter the username to modify: ";
                     cin >> username;
@@ -2103,25 +2186,25 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
             break;
             case VIEW_USERS:
             {
-                ListAll(users);
+                ListAll(users,db);
             }
             break;
 
             case VIEW_LOGS:
             {
-                ViewAllLog(db);
+                ViewlogMenu(db);
             }
             break;
 
             case SHOW_PROFILE:
             {
-                showprofile();
+                showprofile(db);
             }
             break;
 
             case LOGOUT:
             {
-                logout();
+                logout(db);
             }
             break;
 

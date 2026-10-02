@@ -23,13 +23,6 @@ inline bool hasExtraInputOnLine() {
     return true;
 }
 
-// Struct to store log entry with timestamp
-struct LogEntry {
-    string username;
-    string message;
-    time_t timestamp;
-};
-
 class user{
     protected:
 
@@ -40,7 +33,6 @@ class user{
     string role; //roles for users 
     string major;
     int ID;
-    vector <LogEntry> logs; //to count logs entry and veiw logs
     time_t creationDate;
 
     int failedAttempts = 0; // Track failed login attempts
@@ -50,8 +42,7 @@ class user{
     public:
 
     user(string username,string password,string role,int ID,string first_name,string last_name,string major,bool locked);
-    void addLog(string logEntry);
-    void veiwLog();
+    void addLog(Database& db,string logEntry);
     bool isActive();
     bool increaseFailedAttempts(Database &db);
     void resetFailedAttempts(Database &db);
@@ -59,7 +50,7 @@ class user{
     void lockAccount(int durationMinutes);
 
     virtual void login(std::vector<user*>& users,Database &db) = 0; // login message for the user 
-    virtual void logout(); // logout message for the user
+    virtual void logout(Database& db); // logout message for the user
 
     static string getIPAddress();
 
@@ -69,7 +60,7 @@ class user{
     virtual string getMajor();
     virtual int getID();
 
-    virtual void showprofile();
+    virtual void showprofile(Database& db);
     void setRole(string& newRole);
     void setPassword(const string& newPassword);
     void setMajor(string& newMajor);

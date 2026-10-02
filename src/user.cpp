@@ -138,7 +138,7 @@ bool user::authenticate(const string& username,const string& password){
 
 }
 
-void user::logout(){
+void user::logout(Database& db){
     cout<< username << " logged out.\n";
 }
 
@@ -162,37 +162,24 @@ int user::getID(){
     return ID;
 }
 
-void user::showprofile(){
+void user::showprofile(Database& db){
     cout <<"Username : "<<username<<" ID: "<<ID<<" Role: "<<role<<endl;
     char* dt = ctime(&creationDate);
     cout << "Creation date of the Account : "<<dt<<endl;
 }
 
-void user::addLog(string logEntry){
-    LogEntry entry;
-    entry.username = username;
-    entry.message = logEntry;
-    entry.timestamp = time(0);
-    logs.push_back(entry);
+void user::addLog(Database& db,string logEntry){
+    string logQuery = 
+    "INSERT INTO `logs` "
+    "(user_id, message, log_time) "
+    "VALUES("
+    + to_string(ID) + ", '" + 
+    db.escapeString(logEntry) + "',NOW())";
+
+    db.executeQuery(logQuery);
+
 }
 
-void user::veiwLog(){
-    cout << "\n--- Logs for : "<< username <<" ---\n";
-    cout<<"\n";
-    cout << "Total log entries: " << logs.size() << "\n";
-    if(logs.empty()) {
-        cout << "No logs available.\n";
-        return;
-    }
-    for(auto i = 0; i<logs.size(); ++i){
-        string timestamp = ctime(&logs[i].timestamp);
-        // Remove the newline from ctime()
-        timestamp.pop_back();
-        cout << "[" << timestamp << "] " << logs[i].message << " by " << logs[i].username << "\n";
-    }
-    cout<<"\n";
-    cout << "--- End of logs ---\n";
-};
 
 void user::setRole(string& newRole){
     role = newRole;

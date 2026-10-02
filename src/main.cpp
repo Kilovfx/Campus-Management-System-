@@ -109,7 +109,7 @@ int main() {
                         if (user->getRole() == "Student" && user->getusername() == student1.getusername()) {
                             student* actualStudent = dynamic_cast<student*>(user);
                             if (actualStudent != nullptr) {
-                                actualStudent->showMenu(users);
+                                actualStudent->showMenu(users, db);
                             }
                             break;
                         }
