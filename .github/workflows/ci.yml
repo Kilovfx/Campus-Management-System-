@@ -30,7 +30,7 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
 
-            
+
       - name: Check MySQL
         shell: pwsh
         run: |
@@ -46,6 +46,23 @@ jobs:
                 Where-Object { $_.Name -match "mysql" } |
                 Select-Object Name, Status
 
+
+      - name: Start MySQL server
+        shell: pwsh
+        run: |
+            $mysqld = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
+
+            if (-not (Test-Path $mysqld)) {
+                throw "mysqld.exe was not found"
+            }
+
+            Start-Process $mysqld `
+                -ArgumentList "--console" `
+                -NoNewWindow
+
+            Start-Sleep -Seconds 5
+
+            mysql -u root -e "SELECT VERSION();"
 
 
       - name: Find MySQL
