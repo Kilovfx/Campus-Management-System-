@@ -3,11 +3,13 @@
 
 #include <string>
 
+using namespace std;
+
 struct CourseInfo {
-    std::string courseName;
+    string courseName;
     int creditHours;
 
-    CourseInfo(const std::string& name = "", int credits = 0)
+    CourseInfo(string name, int credits)
         : courseName(name), creditHours(credits) {}
 };
 

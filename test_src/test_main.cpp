@@ -41,7 +41,7 @@ int main()
         cout << "Before Test 1\n";
 
         cout << "\n===== Test 1: User does not exist =====\n";
-        admin1.asignrole(users, db, "student1", "Instructor");
+        admin1.assignCourseForInstructor(users, db);
 
         cout << "After Test 1\n";
 
@@ -147,6 +147,7 @@ string testasignrole(vector<user*>& users,Database &db,string username,string ne
         }
 
         users.clear();
+
         return "";
 }
 
@@ -184,5 +185,6 @@ string testchangemajor(vector<user*>& users,Database &db){
         }
 
         users.clear();
+
         return "";
 }

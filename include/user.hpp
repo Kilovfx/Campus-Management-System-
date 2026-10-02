@@ -7,6 +7,7 @@
 #include <ctime>
 #include <limits>
 #include "database.hpp"
+#include "Password.hpp"
 
 using namespace std;
 
@@ -52,12 +53,15 @@ class user{
     void addLog(string logEntry);
     void veiwLog();
     bool isActive();
-    void increasedFailedAttempts();
-    void resetFailedAttempts();
+    bool increaseFailedAttempts(Database &db);
+    void resetFailedAttempts(Database &db);
+    static bool recordLoginAttempts(Database &db,string username, bool success);
     void lockAccount(int durationMinutes);
 
-    virtual void login(std::vector<user*>& users, Database& db) = 0; // login message for the user
+    virtual void login(std::vector<user*>& users,Database &db) = 0; // login message for the user 
     virtual void logout(); // logout message for the user
+
+    static string getIPAddress();
 
     virtual string getusername(); 
     virtual string getpassword();
@@ -73,6 +77,7 @@ class user{
     virtual ~user() {}
 
     bool isUserLocked(Database &db);
+    bool authenticate(const string& username, const string& passwrod);
 
 };
 #endif

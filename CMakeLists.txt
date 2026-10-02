@@ -101,6 +101,10 @@ target_link_libraries(
 )
 
 if(WIN32)
+    target_link_libraries(Campus_app PRIVATE ws2_32)
+endif()
+
+if(WIN32)
     add_custom_command(TARGET Campus_app POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${MYSQL_RUNTIME_LIBRARY}"
@@ -141,6 +145,10 @@ target_link_libraries(
     PRIVATE
     ${MYSQL_LIBRARY}
 )
+
+if(WIN32)
+    target_link_libraries(Test_app PRIVATE ws2_32)
+endif()
 
 if(WIN32)
     add_custom_command(TARGET Test_app POST_BUILD

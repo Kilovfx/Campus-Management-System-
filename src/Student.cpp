@@ -53,7 +53,7 @@ void student::login(vector<user*>& users,Database &db) {
             }
         }
 
-        if (account != nullptr && !account->isActive()) {
+        if (account != nullptr && !account->isUserLocked(db)) {
             cout << "Account is locked. Login is not available.\n";
             return;
         }
@@ -66,8 +66,8 @@ void student::login(vector<user*>& users,Database &db) {
         }
 
         if (account != nullptr) {
-            account->increasedFailedAttempts();
-            if (!account->isActive()) {
+            account->increaseFailedAttempts(db);
+            if (!account->isUserLocked(db)) {
                 cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
                 account->addLog("Student account locked after too many failed login attempts");
                 return;

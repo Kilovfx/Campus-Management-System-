@@ -1,3 +1,6 @@
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
 #include "user.hpp"
 #include <iostream>
 #ifdef _WIN32
@@ -26,16 +29,37 @@ user::user(string username, string password, string role, int ID,string first_na
 
 //locked account functions
 
-bool user::isActive(){
-    if (accountLocked && time(nullptr) >= lockedUntil) {
-        accountLocked = false;
-        failedAttempts = 0;
-        lockedUntil = 0;
-    }
-    return !accountLocked;
-}
-
 bool user::increaseFailedAttempts(Database &db){
+
+    //check if 30 min passed
+    string resetQuery = 
+    "SELECT TIMESTAMPDIFF(MINUTE,last_failed_attempt,NOW()) "
+    "FROM account_security "
+    "WHERE user_id=" + to_string(ID);
+
+    MYSQL_RES* resetResult = db.executeSelect(resetQuery);
+
+    if(resetResult != nullptr){
+
+        MYSQL_ROW resetRow = mysql_fetch_row(resetResult);
+
+
+        if(resetRow != nullptr && resetRow[0] != nullptr){
+
+            int minutesPassed = stoi(resetRow[0]);
+
+
+            if(minutesPassed >= 30){
+
+                resetFailedAttempts(db);
+
+            }
+        }
+
+
+        mysql_free_result(resetResult);
+    }
+
 
     string query =
     "UPDATE account_security "
@@ -67,7 +91,6 @@ bool user::increaseFailedAttempts(Database &db){
     } 
         int attempts = stoi(row[0]);
 
-        cout << "Failed attempts: " << attempts <<endl;
 
         if(attempts >= 6){
             string lockQuery = 
@@ -93,6 +116,7 @@ void user::resetFailedAttempts(Database &db){
     string query =
     "UPDATE account_security SET "
     "failed_attempts=0, "
+    "locked_until=NULL, "
     "last_login=NOW() "
     "WHERE user_id=" + to_string(ID);
 
@@ -106,6 +130,12 @@ void user::lockAccount(int durationMinutes){
 
 void user::login(vector<user*>& users,Database &db){
     cout<< username << " logged in successfully .\n";
+}
+
+bool user::authenticate(const string& username,const string& password){
+
+    return (username == this->username && verifypassword(password, this->password));
+
 }
 
 void user::logout(){
@@ -199,7 +229,6 @@ bool user::isUserLocked(Database &db){
 
 
     bool locked = stoi(row[0]);
-    cout << "Database locked status: " << locked << endl;
 
     if(!locked)
     {
@@ -249,18 +278,63 @@ bool user::isUserLocked(Database &db){
 }
 
 
-void user::recordLoginAttempts(Database &db,bool success){
+bool user::recordLoginAttempts(Database& db,string username,bool success){
 
-        string query =
-        "INSERT INTO login_attempts "
-        "(username_attempted,success,attempt_time) VALUES('"
-        + db.escapeString(username)
-        +"',"
-        + to_string(success)
-        +",NOW())";
+    string ipAddress = getIPAddress();
 
-        db.executeQuery(query);
+    string query =
+    "INSERT INTO login_attempts "
+    "(username_attempted, ip_address, success, attempt_time) "
+    "VALUES ('" +
+    db.escapeString(username) + "','" +
+    db.escapeString(ipAddress) + "'," +
+    to_string(success) +
+    ",NOW())";
 
+    return db.executeQuery(query);
+}
+
+
+
+string user::getIPAddress(){
+
+    //create an object 
+    WSADATA wsadata;
+
+    //start by version 2,2 and fill it in the wsa object by address
+    if(WSAStartup(MAKEWORD(2, 2), &wsadata) != 0){
+        return "Unknown";
+    }
+
+    char hostname[256];
+
+    //get the host name and check error
+    if(gethostname(hostname, sizeof(hostname)) == SOCKET_ERROR){
+        WSACleanup();
+        return "Unknown";
+    }
+
+    //get the ip using gethostbyname
+    hostent* host = gethostbyname(hostname);
+
+    //check error 2
+    if(host == nullptr){
+        WSACleanup();
+        return "Unknown";
+    }
+
+    //store address in binary form
+    in_addr address;
+
+    //copy the address from host into address
+    memcpy(&address,host->h_addr, sizeof(address));
+
+    //convert ip from in_addr to readable text
+    string ipAddress = inet_ntoa(address);
+
+    WSACleanup();
+
+    return ipAddress;
 }
 
 string user::encryptpass(){

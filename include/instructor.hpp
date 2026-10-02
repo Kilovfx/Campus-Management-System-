@@ -21,7 +21,6 @@ public:
     static const map<string, vector<CourseInfo>>& getCourseCatalog();
     void login(vector<user*>& users,Database &db) override;
     void viewMyCourses(Database& db);
-    bool authenticate(const string& username, const string& password, vector<user*>& users);
     void logout() override;
     void showprofile() override;
     void addCourse(vector<user*>& users);

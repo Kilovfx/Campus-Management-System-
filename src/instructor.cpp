@@ -27,77 +27,86 @@ const vector <CourseInfo>& instructor::getCourses() const {
 
 void instructor::login(vector<user*>& users,Database &db) {
     string inputUsername, inputPassword;
-    int unknownAccountAttempts = 0;
-    const int waitTime = 10;
-    user* account = nullptr;
+    int attempts = 0;
+    const int maxAttempt = 6;
 
     while (true) {
+
         cout << "Enter username: ";
         cin >> inputUsername;
-        account = nullptr;
+
         if (hasExtraInputOnLine()) {
             cout << "Invalid input: spaces are not allowed in usernames.\n";
             inputUsername.clear();
         }
 
-        for (auto* userAccount : users) {
-            if (userAccount->getusername() == inputUsername &&
-                userAccount->getRole() == "Instructor") {
+        cout <<"Enter password: ";
+        inputPassword = encryptpass();
+
+        //search for instructor
+
+        user* account = nullptr;
+
+        for(auto* userAccount : users){
+            if(userAccount->getusername() == inputUsername && userAccount->getRole() == "Instructor"){
                 account = userAccount;
                 break;
             }
         }
 
+        //check if its manually locked by Admin
         if(account != nullptr && account->isUserLocked(db)){
             cout <<"Account is locked. Login is not available.\n";
             return;
         }
 
-        cout << "Enter password: ";
-        inputPassword = encryptpass();
+        //successful login
 
-        if (account != nullptr && authenticate(inputUsername, inputPassword, users)) {
-            break;
+        if(account != nullptr && account->authenticate(inputUsername,inputPassword)){
+            user::recordLoginAttempts(db, inputUsername,true);
+            account->resetFailedAttempts(db);
+
+            attempts = 0;
+            this->username = inputUsername;
+
+            cout << "User : " << username << " logged in successfully!\n";
+            addLog("Instructor logged in");
+            return;
         }
 
-        if (account != nullptr) {
-            account->increaseFailedAttempts(db);
-            if (account->isUserLocked(db)) {
-                cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
-                account->addLog("Instructor account locked after too many failed login attempts");
-                return;
-            }
+        //record every failed attempts
+        user::recordLoginAttempts(db,inputUsername,false);
 
-        } else {
-            ++unknownAccountAttempts;
-            if (unknownAccountAttempts >= 3) {
-                cout << "Login attempts exceeded\n";
-                cout << "You have made " << unknownAccountAttempts << " incorrect attempts. Please wait for " << waitTime << " seconds...\n";
-                this_thread::sleep_for(chrono::seconds(waitTime));
+        if (account != nullptr){
+            bool locked = account->increaseFailedAttempts(db);
+
+            if(locked) {
+                cout << "Admin account locked after too many failed attempts.\n";
+                account->addLog("Instructor account locked after too many failed attempts");
                 return;
             }
+        }
+
+        attempts++;
+
+        //unknown username reaches 6 attempts
+        if(attempts >= maxAttempt){
+            cout << "Login failed after 6 attempts.\n";
+            return;
+        }
+
+        //brute force protection 
+        if(attempts >= 3){
+
+            int waittime = 15 * (attempts - 2);
+            cout << "You have made " << attempts << " incorrect attempts, Please wait for " << waittime << " seconds .. \n";
+            this_thread::sleep_for(chrono::seconds(waittime));
+
+            cout << "You can try now.\n";
         }
 
         cout << "Invalid credentials. Please try again.\n";
     }
-
-    if (account != nullptr) {
-        account->resetFailedAttempts(db);
-        this->username = inputUsername;
-        cout << username << " logged in successfully as an Instructor.\n";
-        addLog("Instructor logged in");
-    } else {
-        cout << "Invalid credentials. Login failed.\n";
-    }
-}
-
-bool instructor::authenticate(const string& username, const string& password, vector<user*>& users) {
-    for (const auto& user : users) {
-        if (user->getusername() == username && verifypassword(password,user->getpassword()) && user->getRole() == "Instructor") {
-            return true;
-        }
-    }
-    return false;
 }
 
 void instructor::logout() {

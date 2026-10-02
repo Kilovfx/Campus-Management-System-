@@ -54,8 +54,17 @@ static bool isAdminRole(const string& role) {
     return normalized == "admin";
 }
 
+
+admin::admin(string username, string password, string role, int ID)
+    : user(username, password, role, ID, "", "", "", false) {
+    this->username = username;
+    this->password = password;
+    this->role = role;
+    this->ID = ID;
+}
+
 //check if admin handling error
-bool canLockUser(Database& db, string username){
+bool admin::canLockUser(Database& db, string username){
 
     string Query =
     "SELECT role FROM users WHERE username='" +
@@ -86,13 +95,56 @@ bool canLockUser(Database& db, string username){
     return true;
 }
 
-admin::admin(string username, string password, string role, int ID)
-    : user(username, password, role, ID, "", "", "", false) {
-    this->username = username;
-    this->password = password;
-    this->role = role;
-    this->ID = ID;
+bool admin::unlockuserDatabase(Database& db,string username){
+
+    string findQuery = 
+    "SELECT u.user_id, ac.locked "
+    "FROM users u "
+    "INNER JOIN account_security ac "
+    "ON u.user_id = ac.user_id "
+    "WHERE u.username='"
+    + db.escapeString(username) + "'";
+
+    MYSQL_RES* result = db.executeSelect(findQuery);
+
+    if(result == nullptr) {
+        cout <<"User not found.\n";
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+
+    if(row == nullptr){
+        cout <<"User not found\n";
+        mysql_free_result(result);
+        return false;
+    }
+
+    int userID = stoi(row[0]);
+    bool locked = stoi(row[1]);
+    
+    mysql_free_result(result);
+
+    if(!locked) {
+        cout <<"Account already unlocked.\n";
+        return false;
+    }
+
+    string unlockQuery = 
+    "UPDATE account_security SET "
+    "locked=0, "
+    "failed_attempts=0, "
+    "locked_until=NULL "
+    "WHERE user_id=" + to_string(userID);
+
+    if(!db.executeQuery(unlockQuery)){
+        cout <<"Failed unlocking user\n";
+        return false;
+    }
+
+    return true;
 }
+
 
 bool admin::changeUserRoleDatabase(Database &db,user* selectedUser,string newRole){
 
@@ -500,9 +552,92 @@ bool admin::changeMajorDatabase(Database &db,user* selectedUser,string newMajor)
 
 }
 
-bool admin::authenticate(string username,string password){
-    return (username == this->username && verifypassword(password,this->password)); // check for the credentials
+bool admin::usernameexist(Database &db,string username){
+
+    string userQuery = 
+    "SELECT user_id FROM users WHERE username='" 
+    + db.escapeString(username) + 
+    "'LIMIT 1";
+
+    MYSQL_RES* result = db.executeSelect(userQuery);
+
+    if(result == nullptr){
+        return false;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    bool exist = (row != nullptr);
+    mysql_free_result(result);
+    return exist;
+    
 }
+
+bool admin::createaccountsecurity(Database &db,int userID){
+
+    //for account_security table
+    string securityQuery =
+    "INSERT INTO account_security "
+    "(user_id,failed_attempts,locked,locked_until,last_failed_attempt,last_login)"
+    "VALUES ("
+    + to_string(userID) +
+    ",0,0,NULL,NULL,NULL)";
+
+    if(!db.executeQuery(securityQuery)){
+        cout <<"Failed creating account security\n";
+        return false;
+    }
+
+    return true;
+}
+
+int admin::insertUser(Database &db,string username, string hashedpassword, string role, int majorID){
+
+        string userQuery = 
+        "INSERT INTO users "
+        "(username,password_hash,role,major_id) VALUES('" +
+            db.escapeString(username) + "','" +
+            db.escapeString(hashedpassword) + "','" +
+            db.escapeString(role) + "'," +
+            to_string(majorID) + 
+
+        ")" ;
+
+        if(!db.executeQuery(userQuery)){
+            return -1;
+        }
+
+    return db.getLastInsertID();    
+}
+
+bool admin::insertStudent(Database &db,int userID,string first_name,string last_name,int majorID){
+
+        string studentQuery = 
+        "INSERT INTO students"
+        "(student_id,first_name,last_name,major_id) VALUES(" +
+        to_string(userID) + ",'" +
+        db.escapeString(first_name) + "','" +
+        db.escapeString(last_name) + "',"  +
+        to_string(majorID) + 
+
+        ")";
+
+    return db.executeQuery(studentQuery);
+}
+
+bool admin::insertInstructor(Database &db,int userID,string first_name,string last_name,int majorID){
+
+    string instructorQuery = 
+        "INSERT INTO instructors "
+        "(instructor_id,first_name,last_name,major_id) VALUES(" +
+        to_string(userID) + ",'" +
+        db.escapeString(first_name) + "','" +
+        db.escapeString(last_name) + "',"  +
+        to_string(majorID) +
+        ")";
+
+    return db.executeQuery(instructorQuery);
+}
+
 
 void admin::showprofile(){
     cout<<"\nAdmin Profile\n";
@@ -598,7 +733,7 @@ void admin::login(vector<user*>& users,Database &db){
     
     string username, password;
     int attempts = 0;
-    const int maxAttempts = 3;
+    const int maxAttempts = 6;
     
 
     while (true) {
@@ -630,48 +765,174 @@ void admin::login(vector<user*>& users,Database &db){
             return;
         }
 
-        if (account != nullptr &&
-            verifypassword(password, account->getpassword())) {
-            account->recordLoginAttempts(db,true);
+        if (account != nullptr && account->authenticate(username,password)) {
+            account->recordLoginAttempts(db,username,true);
             account->resetFailedAttempts(db);
             attempts = 0;
             this->username = username;
             cout << "User : " << username << " logged in successfully!\n";
             addLog("Admin logged in");
             return;
-        }
 
+        }
+        //record every failed attempts
+        user::recordLoginAttempts(db,username,false);
+
+        
+        //know admin but wrong password
         if(account !=nullptr){
-            account->recordLoginAttempts(db,false);
 
             bool locked = account->increaseFailedAttempts(db);
 
             if(locked){
                 cout << "Admin account locked after too many failed attempts.\n";
+                account->addLog("Admin account locked after too many failed attempts");
                 return;
             }
         }
 
+
         attempts++;
 
-        if(attempts >= maxAttempts) {
-            int waitTime = 5 * attempts;
-            cout << "You have made " << attempts << " incorrect attempts. Please wait for " << waitTime << " seconds...\n";
-            this_thread::sleep_for(chrono::seconds(waitTime));
-            cout << "You can now try again.\n";
+        if(attempts >= maxAttempts){
+            cout <<"Login failed after 6 attempts.\n";
+            return;
         }
+
+        if(attempts >= 3){
+
+            int waittime = 15 * (attempts - 2);
+
+            cout << "You have made " << attempts << " incorrect attempts, Please wait for " << waittime << " seconds .. \n";
+            this_thread::sleep_for(chrono::seconds(waittime));
+
+            cout <<"You can try now \n";
+        }
+            
+
 
         cout << "Invalid credentials. Please try again.\n";
     }
-}
+} 
 
 
 
 
-void admin::ViewAllLog(vector<user*>& users){
-    for(auto& user : users){
-        user->veiwLog();
-        cout<<"\n";
+void admin::ViewAllLog(Database& db){
+    int choice; 
+
+    while(true){
+
+        cout << "\n--- View Logs ---\n";
+        cout << "1. View all logs\n";
+        cout << "2. Search by Log ID\n";
+        cout << "3. Search by User ID\n";
+        cout << "0. Exit\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        while(cin.fail() || choice < 0 || choice > 3 || hasExtraInputOnLine){
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout <<"Invalid choice. Enter 0-3: ";
+            cin >> choice;
+        }
+
+        if(choice == 0)
+            break;
+
+        string query;
+
+        //list all log
+        if(choice == 1){
+
+            query = 
+            "SELECT l.log_id, l.user_id, u.username, l.message, l.log_time "
+            "FROM logs l "
+            "LEFT JOIN users u "
+            "ON l.user_id = u.user_id "
+            "ORDER BY l.log_id DESC";
+        }
+
+        //search by logID
+        else if(choice == 2){
+            int logID;
+
+            cout << "Enter log ID: ";
+            cin >> logID;
+            while(cin.fail() || logID <= 0 || hasExtraInputOnLine()){
+
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(),'\n');
+
+                cout <<"Invalid Log ID. Enter a positive number: ";
+                cin >> logID;
+            }
+
+            query =
+            "SELECT l.log_id, l.user_id, u.username, l.message, l.log_time "
+            "FROM logs l "
+            "LEFT JOIN users u "
+            "ON l.user_id = u.user_id "
+            "WHERE l.log_id=" + to_string(logID);
+        }
+
+        //search by user ID
+
+        else if(choice == 3){
+
+            int userID;
+
+            cout <<"Enter user ID: ";
+            cin >>userID;
+            while(cin.fail() || userID <= 0 || hasExtraInputOnLine()){
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(),'\n');
+
+                cout <<"Invalid user ID. Enter a positive number: ";
+                cin >> userID;
+            }
+
+            query = 
+            "SELECT l.log_id, l.user_id, u.username, "
+            "l.message, l.log_time "
+            "FROM `log` l "
+            "LEFT JOIN users u "
+            "ON l.user_id = u.user_id "
+            "WHERE l.user_id=" + to_string(userID) +
+            " ORDER BY l.log_id DESC";
+        }
+
+        MYSQL_RES* result = db.executeSelect(query);
+
+        if(result == nullptr){
+            cout << "Failed to retrieve logs.\n";
+            continue;
+        }
+
+        MYSQL_ROW row;
+        bool found = false;
+
+        cout << "\n--- Logs ---\n";
+
+        while((row = mysql_fetch_row(result)) != nullptr){
+
+            found = true;
+
+            cout << "Log ID: " << row[0]
+                 << " | User ID: " << row[1]
+                 << " | Username: "
+                 << (row[2] ? row[2] : "Deleted User")
+                 << " | Message: " << row[3]
+                 << " | Time: " << row[4]
+                 << endl;
+        }
+        if(!found){
+            cout << "No logs found.\n";
+        }
+
+        mysql_free_result(result);
     }
 }
 
@@ -797,15 +1058,11 @@ void admin::unlockUser(vector<user*>& users,Database &db) {
             continue;
         }
 
-        if (selectedUser->isActive()) {
-            cout << "Account already unlocked!\n";
-            continue;
+        if (unlockuserDatabase(db,unlockedusername)){
+            cout <<"User " << unlockedusername << " has been unlocked.\n";
+
+            addLog("Unlocked user: " + unlockedusername);
         }
-
-        selectedUser->resetFailedAttempts(db);
-
-        cout << "User " << unlockedusername << " has been unlocked.\n";
-        addLog("Unlocked user: " + unlockedusername);
 
         break;
     }
@@ -813,13 +1070,11 @@ void admin::unlockUser(vector<user*>& users,Database &db) {
 
 
 
-void admin::createuser(std::vector<user*>& users,Database& db, std::string username, std::string password,
-                       std::string role, std::string first_name, std::string last_name,
-                       std::string major) {
+void admin::createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major) {
     user* newUser = nullptr;
     string hashedPassword = Hashpassword(password);
-    int userID = -1;
 
+    //handling error existing input 1
     try {
         auto isBlank = [](const string& value) {
             return value.empty() || all_of(value.begin(), value.end(), [](unsigned char character) {
@@ -827,6 +1082,7 @@ void admin::createuser(std::vector<user*>& users,Database& db, std::string usern
             });
         };
 
+        //handling error 2
         if (isBlank(first_name) || isBlank(last_name)) {
             cout << "Error: First name and last name cannot be empty.\n";
             addLog("Failed to create user: " + username + " - Name is empty");
@@ -834,160 +1090,166 @@ void admin::createuser(std::vector<user*>& users,Database& db, std::string usern
         }
 
         // Check if username already exists
-        for (const auto& user : users) {
-            if (user->getusername() == username) {
-                std::cout << "Error: Username '" << username << "' already exists. Please use a different username.\n";
-                addLog("Failed to create user: " + username + " - Username already exists");
-                return;
-            }
-        }
-
-        const string usernameQuery =
-            "SELECT user_id FROM users WHERE username='" +
-            db.escapeString(username) + "' LIMIT 1";
-        MYSQL_RES* usernameResult = db.executeSelect(usernameQuery);
-        if (usernameResult == nullptr) {
-            cout << "Failed to check whether the username already exists.\n";
-            addLog("Failed to create user: " + username + " - Username lookup failed");
+        if(usernameexist(db,username)){
+            cout <<"Username already exists\n";
+            addLog("Failed creating user: username already exists");
             return;
         }
 
-        const bool usernameExists = mysql_num_rows(usernameResult) > 0;
-        mysql_free_result(usernameResult);
-        if (usernameExists) {
-            cout << "Error: Username '" << username
-                 << "' already exists. Please use a different username.\n";
-            addLog("Failed to create user: " + username + " - Username already exists");
+
+        if(role!="Student" && role!="Instructor"){
+
+            cout << "Invalid role\n";
             return;
         }
 
-        if (role == "Student" || role == "Instructor") {
-            if (!isMajorAllowed(major)) {
-                cout << "Invalid major. Please choose from the list below:\n";
-                printAllowedMajors();
-                return;
-            }
-
-            int majorID = getMajorID(db,major);
-            if(majorID == -1){
-                cout << "Major ID not Found!\n";
-                return;
-            }
-
-            /*
-            STEP 1
-            Insert into users table
-            */
-
-            string userQuery = 
-            "INSERT INTO users "
-            "(username,password_hash,role,major_id) VALUES('" +
-                db.escapeString(username) + "','" +
-                db.escapeString(hashedPassword) + "','" +
-                role + "'," +
-                to_string(majorID) + 
-        
-            ")" ;
-
-            if(!db.executeQuery(userQuery)){
-                cout <<"Failed creating user . \n";
-                return;
-            }
-
-            // The ID is generated by this INSERT, so read it only afterwards.
-            userID = db.getLastInsertID();
 
 
-            string securityQuery =
-            "INSERT INTO account_security "
-            "(user_id, failed_attempts, locked, locked_until, last_failed_attempt, last_login) "
-            "VALUES (" +
-            to_string(userID) +
-            ",0,0,NULL,NULL,NULL)";
-
-            if(!db.executeQuery(securityQuery)){
-                cout << "Failed creating account security.\n";
-                return;
-            }
-
-            if (userID < 0) {
-                cout << "Failed to retrieve the new user's ID.\n";
-                return;
-            }
-
-            /*
-            STEP 3
-            Insert into student/instructor table
-             */
-
-
-            if (role == "Student"){
-
-                string studentQuery = 
-                "INSERT INTO students"
-                "(student_id,first_name,last_name,major_id) VALUES(" +
-                to_string(userID) + ",'" +
-                db.escapeString(first_name) + "','" +
-                db.escapeString(last_name) + "',"  +
-                to_string(majorID) + 
-        
-            ")";
-            if(!db.executeQuery(studentQuery)){
-                cout << "Failed creating student profile!\n";
-                return;
-            }
-
-            newUser = new student(username,hashedPassword,role,userID,first_name,last_name,major);
-
-            }
-            if(role == "Instructor"){
-
-                string instructorQuery = 
-                "INSERT INTO instructors"
-                "(instructor_id,first_name,last_name,major_id) VALUES('" +
-                to_string(userID) + "','" +
-                db.escapeString(first_name) + "','" +
-                db.escapeString(last_name) + "','"  +
-                to_string(majorID) + 
-        
-            ")";
-
-             if(!db.executeQuery(instructorQuery)){
-                cout << "Failed creating instructor profile.\n";
-                return;
-            }
-
-                newUser = new instructor(username,hashedPassword,role,userID,first_name,last_name,major);
-
-            }
-
-        } else {
-            cout << "Invalid role. Please enter either Student or Instructor.\n";
+        //check if the major is allowed
+        if(!isMajorAllowed(major)){
+            cout <<"Major is not allowed\n";
             return;
         }
 
-        if (newUser == nullptr) {
-            cout << "Failed to create the user profile.\n";
+
+        int majorID = getMajorID(db,major);
+        if(majorID == -1){
+            cout << "Major ID not Found!\n";
             return;
         }
 
         /*
-            STEP 4
-            Add object to memory
+        STEP 1
+        Insert into users table
+        */
+
+        int userID = insertUser(db,username,hashedPassword,role,majorID);
+
+        if(userID == -1){
+            cout <<"Failed creating user\n";
+            return;
+        }
+
+        if(!createaccountsecurity(db,userID)){
+
+            cout <<"Failed creating account security\n";
+            return;
+        }
+
+        /*
+        STEP 3
+        Insert into student/instructor table
             */
 
 
-        users.push_back(newUser);  // Add the new user to the vector
-        std::cout << "User " << username << " with role " << role << " created successfully with ID: " << userID << "\n";
-        addLog("Created user: " + username + " with role: " + role);
+        if (role == "Student"){
+
+        if(!insertStudent(db,userID,first_name,last_name,majorID)){
+            cout <<"Failed to create student\n";
+            return;
+        }
+
+        newUser = new student(username,hashedPassword,role,userID,first_name,last_name,major);
+
+        }
+
+        else if(role == "Instructor"){
+
+        if(!insertInstructor(db,userID,first_name,last_name,majorID)){
+            cout <<"Failed to create instructor\n";
+            return;
+        }               
+
+            newUser = new instructor(username,hashedPassword,role,userID,first_name,last_name,major);
+
+        }
+
+        
+        if (newUser != nullptr) {
+
+            users.push_back(newUser);  // Add the new user to the vector
+            cout << "User " << username << " with role " << role << " created successfully with ID: " << userID << "\n";
+            addLog("Created user: " + username + " with role: " + role);
+            
+        }
+          
     }
 
-    catch (const std::bad_alloc& e) {
-        std::cout << "Memory allocation failed: " << e.what() << std::endl;
- }
+    catch(const exception& e){
+        cout <<"Error: " << e.what() <<endl;
+    }
 }
 
 
+bool admin::deleteUserDatabase(Database& db, int userID, string role){
+    // Delete related student courses
+    if(role == "Student"){
+
+        string query =
+        "DELETE FROM student_courses WHERE student_id="
+        + to_string(userID);
+
+        if(!db.executeQuery(query)){
+            cout << "Failed deleting student courses.\n";
+            return false;
+        }
+
+        // Delete student profile
+        query =
+        "DELETE FROM students WHERE student_id="
+        + to_string(userID);
+
+        if(!db.executeQuery(query)){
+            cout << "Failed deleting student profile.\n";
+            return false;
+        }
+    }
+
+    // Delete related instructor courses
+    else if(role == "Instructor"){
+
+        string query =
+        "DELETE FROM instructor_courses WHERE instructor_id="
+        + to_string(userID);
+
+        if(!db.executeQuery(query)){
+            cout << "Failed deleting instructor courses.\n";
+            return false;
+        }
+
+        // Delete instructor profile
+        query =
+        "DELETE FROM instructors WHERE instructor_id="
+        + to_string(userID);
+
+        if(!db.executeQuery(query)){
+            cout << "Failed deleting instructor profile.\n";
+            return false;
+        }
+    }
+
+    // Delete account security
+    string securityQuery =
+    "DELETE FROM account_security WHERE user_id="
+    + to_string(userID);
+
+    if(!db.executeQuery(securityQuery)){
+        cout << "Failed deleting account security.\n";
+        return false;
+    }
+
+    // Delete from users table
+    string userQuery =
+    "DELETE FROM users WHERE user_id="
+    + to_string(userID);
+
+    if(!db.executeQuery(userQuery)){
+        cout << "Failed deleting user profile.\n";
+        return false;
+    }
+
+    return true;
+}
 
 
 
@@ -1167,40 +1429,12 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
         because it has foreign key to users
     */
 
-    if(selectedRole == "Student"){
-        string query = 
-        "DELETE FROM students WHERE student_id ="
-        + to_string(selectedID);
-
-        if(!db.executeQuery(query)){
-            cout <<"Failed deleting student profile.\n";
-            return;
-        }
+    if(!deleteUserDatabase(db,selectedID,selectedRole)){
+        return;
     }
-
-    else if (selectedRole == "Instructor"){
-        string query = 
-        "DELETE FROM instructors WHERE instructor_id ="
-        + to_string(selectedID);
-
-        if(!db.executeQuery(query)){
-            cout <<"Failed deleting instructor profile.\n";
-            return;          
-        }
-    }
-
-    // Delete from users table
-    string userQuery =
-    "DELETE FROM users WHERE user_id="
-    + to_string(selectedID);
-        if(!db.executeQuery(userQuery)){
-            cout <<"Failed deleting user profile.\n";
-            return;
-        }
-
-     // Delete from vector
     bool found = false;
     auto it = users.begin();
+
     while(it != users.end()){
         if((*it)->getID() == selectedID){
             delete *it;
@@ -1212,10 +1446,16 @@ void admin::deleteuser(vector<user*>& users,Database& db,string username,string 
     }
 
     if(!found) {
-        cout << "User: " << selectedUsername << " Not Found\n";
-        return;
-    } else {
-        cout <<"User: " << selectedUsername << "| ID: " << selectedID << " | Role: " << selectedRole << " has been deleted successfully! \n";
+    cout << "User: " << selectedUsername << " Not Found\n";
+    return;
+    }
+    else {
+        cout << "User: " << selectedUsername
+            << "| ID: " << selectedID
+            << " | Role: " << selectedRole
+            << " has been deleted successfully! \n";
+
+        addLog("Deleted user: " + selectedUsername);
     }
 }
 
@@ -1860,6 +2100,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
                 break;
                 }
             }
+            break;
             case VIEW_USERS:
             {
                 ListAll(users);
@@ -1868,7 +2109,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case VIEW_LOGS:
             {
-                ViewAllLog(users);
+                ViewAllLog(db);
             }
             break;
 
@@ -1889,4 +2130,5 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
         }
     } while (choice != LOGOUT);
+
 }

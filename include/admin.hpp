@@ -33,30 +33,52 @@ class admin : public user{
     public:
     admin(string username, string password, string role, int ID);
 
-    // message for log in & log out 
+    // loggin & loggout
     void login(vector<user*>& users,Database &db) override; 
     void logout() override;
+
+
+    //lock user & unlock user
     void lockUser(vector<user*>& users,Database &db);
     void unlockUser(vector<user*>& users,Database &db);
-    void showprofile() override;
-    void ViewAllLog(vector<user*>& users);
-    void ListAll(vector<user*>& users);
-    void Showmeniu(vector<user*>& users,Database& db);
-    bool authenticate(string username,string password);
-    void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
-    int  getMajorID(Database& db,string majorName);                
-    void deleteuser(vector<user*>& users,Database& db,string username,string password); 
-    void asignrole(vector<user*>& users,Database &db,string username,string newRole);
-    bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
-    bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
-    bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
     bool lockUserDatabase(Database &db,string username, int minutes);
     bool canLockUser(Database& db, string username);
-    vector<CourseInfo> getCoursesForMajor(Database& db, string major);
+    bool unlockuserDatabase(Database& db, string username);
+
+    //show
+    void showprofile() override;
+    void Showmeniu(vector<user*>& users,Database& db);
+
+    //veiw functions
+    void ViewAllLog(Database& db);
+    void ListAll(vector<user*>& users);
+    
+    // create user functions
+    void createuser(vector<user*>& users,Database& db, string username, string password, string role,string first_name, string last_name, string major);
+    bool usernameexist(Database &db,string username);
+    int insertUser(Database &db,string username, string hashedpassword, string role, int majorID);
+    bool createaccountsecurity(Database &db,int userID);
+    bool insertStudent(Database &db,int userID,string first_name,string last_name,int majorID);
+    bool insertInstructor(Database &db,int userID,string first_name,string last_name,int majorID);
+
+    void deleteuser(vector<user*>& users,Database& db,string username,string password);
+    bool deleteUserDatabase(Database& db, int userID, string role);
+
+    void asignrole(vector<user*>& users,Database &db,string username,string newRole);
+    bool changeUserRoleDatabase(Database &db,user* selectedUser,string newRole);
+    
+
     void changepassword(vector<user*>& users,Database& db);
-    void changeMajor(vector<user*>& users,Database &db);
-    void assignCourseForInstructor(vector<user*>& users,Database &db);
     string encryptpass() override;
+
+    //change major
+    void changeMajor(vector<user*>& users,Database &db);
+    int  getMajorID(Database& db,string majorName);   
+    bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
+
+    void assignCourseForInstructor(vector<user*>& users,Database &db);
+    bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
+    vector<CourseInfo> getCoursesForMajor(Database& db, string major);
 
 
 };
