@@ -1,0 +1,77 @@
+name: C++ CI
+
+on:
+  push:
+    branches:
+      - "testing-CI/CD"
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  build:
+    runs-on: windows-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+
+      - name: Find MySQL
+        shell: pwsh
+        run: |
+          $header = Get-ChildItem `
+            "C:\Program Files\MySQL" `
+            -Filter mysql.h `
+            -Recurse `
+            -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+
+          if (-not $header) {
+            throw "mysql.h was not found"
+          }
+
+          $mysqlRoot = $header.Directory.Parent.FullName
+
+          Write-Host "MySQL found at: $mysqlRoot"
+
+          "MYSQL_DIR=$mysqlRoot" >> $env:GITHUB_ENV
+
+      - name: Create CI database config
+        shell: pwsh
+        run: |
+          @"
+          #pragma once
+
+          #include <string>
+
+          using namespace std;
+
+          const string DB_HOST = "localhost";
+          const string DB_USER = "root";
+          const string DB_PASSWORD = "";
+          const string DB_NAME = "campus_managment";
+          "@ | Set-Content include/db_config.hpp
+
+      - name: Configure CMake
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G Ninja -DMYSQL_DIR="$env:MYSQL_DIR"
+
+      - name: Build project
+        shell: msys2 {0}
+        run: |
+          cmake --build build
