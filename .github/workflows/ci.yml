@@ -91,7 +91,7 @@ jobs:
 
             Write-Host "Loading test database..."
 
-            Get-Content "database/test/sql/ci_test_database.sql" -Raw |
+            Get-Content "database/tests/ci_test_database.sql" -Raw |
                 & $mysql -u root --skip-password
 
             if ($LASTEXITCODE -ne 0) {
