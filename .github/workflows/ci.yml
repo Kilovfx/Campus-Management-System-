@@ -152,10 +152,9 @@ jobs:
         run: |
             ./build/Test_app.exe
 
-
-      - name: Verify test database 
-        shell: pwsh
-        run: |
-            $mysql="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
-
-            & $mysql -u root --skip-password -e "USE campus_managment; SELECT * FROM logs;"
+            echo "Test finished. Verifying database ..."
+            
+            "/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" \
+              -u root \
+              --skip-password \
+              -e "USE campus_managment; SELECT * FROM logs;"
