@@ -823,7 +823,7 @@ void admin::ViewAllLog(Database& db){
     string Allquery;
     "SELECT l.log_id, l.user_id, u.username, "
     "l.message, l.log_time "
-    "FROM `log` l "
+    "FROM `logs` l "
     "LEFT JOIN users u "
     "ON l.user_id = u.user_id "
     "ORDER BY l.log_id DESC";
@@ -865,7 +865,7 @@ bool admin::ViewLogByID(Database& db,int logID){
     string query =
     "SELECT l.log_id, l.user_id, u.username, "
     "l.message, l.log_time "
-    "FROM `log` l "
+    "FROM `logs` l "
     "LEFT JOIN users u "
     "ON l.user_id = u.user_id "
     "WHERE l.log_id=" + to_string(logID);
@@ -904,7 +904,7 @@ bool admin::ViewLogsByUserID(Database &db,int userID){
     string query =
     "SELECT l.log_id, l.user_id, u.username, "
     "l.message, l.log_time "
-    "FROM `log` l "
+    "FROM `logs` l "
     "LEFT JOIN users u "
     "ON l.user_id = u.user_id "
     "WHERE l.user_id=" + to_string(userID) +
