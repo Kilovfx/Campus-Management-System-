@@ -20,6 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -34,73 +35,19 @@ jobs:
       - name: Check MySQL
         shell: pwsh
         run: |
-                $mysql = Get-Command mysql.exe -ErrorAction SilentlyContinue
+          $mysql = Get-Command mysql.exe -ErrorAction SilentlyContinue
 
-                if (-not $mysql) {
-                    throw "mysql.exe was not found"
-                }
+          if (-not $mysql) {
+              throw "mysql.exe was not found"
+          }
 
-                mysql --version
+          mysql --version
 
-                Get-Service |
-                Where-Object { $_.Name -match "mysql" } |
-                Select-Object Name, Status
+          Get-Service |
+            Where-Object { $_.Name -match "mysql" } |
+            Select-Object Name, Status
 
 
-      - name: Start MySQL and load test database
-        shell: pwsh
-        run: |
-            $mysqld = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
-            $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
-
-            $dataDir = "$env:RUNNER_TEMP\mysql-data"
-
-            New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-
-            Write-Host "Initializing MySQL..."
-            & $mysqld --initialize-insecure --datadir="$dataDir" --console
-
-            Write-Host "Starting MySQL server..."
-
-            $server = Start-Process $mysqld `
-                -ArgumentList @(
-                    "--datadir=$dataDir",
-                    "--port=3306",
-                    "--console"
-                ) `
-                -NoNewWindow `
-                -PassThru
-
-            Write-Host "Waiting for MySQL..."
-
-            for ($i = 1; $i -le 30; $i++) {
-
-                & $mysql -u root --skip-password -e "SELECT 1;" 2>$null
-
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "MySQL is ready!"
-                    break
-                }
-
-                Start-Sleep -Seconds 1
-            }
-
-            if ($LASTEXITCODE -ne 0) {
-                throw "MySQL did not start"
-            }
-
-            Write-Host "Loading test database..."
-
-            Get-Content "database/tests/ci_test_database.sql" -Raw |
-                & $mysql -u root --skip-password
-
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to load test database"
-            }
-
-            Write-Host "Test database loaded successfully"  
-            
-            
       - name: Find MySQL
         shell: pwsh
         run: |
@@ -112,7 +59,7 @@ jobs:
             Select-Object -First 1
 
           if (-not $header) {
-            throw "mysql.h was not found"
+              throw "mysql.h was not found"
           }
 
           $mysqlRoot = $header.Directory.Parent.FullName
@@ -120,6 +67,7 @@ jobs:
           Write-Host "MySQL found at: $mysqlRoot"
 
           "MYSQL_DIR=$mysqlRoot" >> $env:GITHUB_ENV
+
 
       - name: Create CI database config
         shell: pwsh
@@ -137,24 +85,97 @@ jobs:
           const string DB_NAME = "campus_managment";
           "@ | Set-Content include/db_config.hpp
 
+
       - name: Configure CMake
         shell: msys2 {0}
         run: |
           cmake -S . -B build -G Ninja -DMYSQL_DIR="$MYSQL_DIR"
+
 
       - name: Build project
         shell: msys2 {0}
         run: |
           cmake --build build
 
-      - name: Run tests
-        shell: msys2 {0}
-        run: |
-            ./build/Test_app.exe
 
-            echo "Test finished. Verifying database ..."
-            
-            "/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" \
-              -u root \
-              --skip-password \
-              -e "USE campus_managment; SELECT * FROM logs;"
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $mysqld = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqld.exe"
+          $mysql = "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+
+          $dataDir = "$env:RUNNER_TEMP\mysql-data"
+
+          New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+
+          Write-Host "Initializing MySQL..."
+
+          & $mysqld --initialize-insecure --datadir="$dataDir" --console
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "MySQL initialization failed"
+          }
+
+          Write-Host "Starting MySQL server..."
+
+          $server = Start-Process $mysqld `
+            -ArgumentList @(
+              "--datadir=$dataDir",
+              "--port=3306",
+              "--console"
+            ) `
+            -NoNewWindow `
+            -PassThru
+
+          Write-Host "Waiting for MySQL..."
+
+          $mysqlReady = $false
+
+          for ($i = 1; $i -le 30; $i++) {
+
+              & $mysql -u root --skip-password -e "SELECT 1;" 2>$null
+
+              if ($LASTEXITCODE -eq 0) {
+                  $mysqlReady = $true
+                  Write-Host "MySQL is ready!"
+                  break
+              }
+
+              Start-Sleep -Seconds 1
+          }
+
+          if (-not $mysqlReady) {
+              throw "MySQL did not start"
+          }
+
+          Write-Host "Loading test database..."
+
+          Get-Content "database/tests/ci_test_database.sql" -Raw |
+            & $mysql -u root --skip-password
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to load test database"
+          }
+
+          Write-Host "Test database loaded successfully"
+
+          Write-Host "Running Test_app..."
+
+          & ".\build\Test_app.exe"
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Test_app failed"
+          }
+
+          Write-Host "Test_app passed!"
+
+          Write-Host "Verifying logs table..."
+
+          & $mysql -u root --skip-password `
+            -e "USE campus_managment; SELECT * FROM logs;"
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Database verification failed"
+          }
+
+          Write-Host "Database verification passed!"
