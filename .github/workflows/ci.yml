@@ -140,7 +140,7 @@ jobs:
       - name: Configure CMake
         shell: msys2 {0}
         run: |
-          cmake -S . -B build -G Ninja -DMYSQL_DIR="$env:MYSQL_DIR"
+          cmake -S . -B build -G Ninja -DMYSQL_DIR="$MYSQL_DIR"
 
       - name: Build project
         shell: msys2 {0}
@@ -151,3 +151,11 @@ jobs:
         shell: msys2 {0}
         run: |
             ./build/Test_app.exe
+
+
+      - name: Verify test database 
+        shell: pwsh
+        run: |
+            $mysql="C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+
+            & $mysql -u root --skip-password -e "USE campus_managment; SELECT * FROM logs;"
