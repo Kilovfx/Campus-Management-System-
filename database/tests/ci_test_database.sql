@@ -156,7 +156,8 @@ CREATE TABLE logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO logs (log_id, user_id, message) VALUES
-(2,1350,'CI test log');
+(2,1350,'CI test log'),
+(1,5001,'CI test Number 2');
 
 CREATE TABLE login_attempts (
   attempt_id INT NOT NULL AUTO_INCREMENT,
