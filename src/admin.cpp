@@ -820,9 +820,8 @@ void admin::login(vector<user*>& users,Database &db){
 
 void admin::ViewAllLog(Database& db){
 
-    string Allquery;
-    "SELECT l.log_id, l.user_id, u.username, "
-    "l.message, l.log_time "
+    string Allquery =
+    "SELECT l.log_id, l.user_id, u.username, l.message, l.log_time "
     "FROM `logs` l "
     "LEFT JOIN users u "
     "ON l.user_id = u.user_id "
