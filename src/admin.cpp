@@ -1922,7 +1922,7 @@ void admin::assignCourseToInstructorMenu(vector<user*>& users,Database &db)
 
     cin >> operationChoice;
 
-    while(cin.fail() || operationChoice < 1 || operationChoice > 2 || hasExtraInputOnLine()){
+    while(cin.fail() || operationChoice < 0 || operationChoice > 2 || hasExtraInputOnLine()){
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << "Invalid choice. Enter 1, 2, or 0: ";
