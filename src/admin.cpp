@@ -2033,8 +2033,8 @@ void admin::assignCourseToInstructorMenu(vector<user*>& users,Database &db)
         if(courseChoice == 0)
             return;
         string newCourseName = courses[courseChoice - 1].courseName;
-        bool result = assignCourseToInstructorlogic(db,selectedInstructor,1,"",newCourseName);
-        if(result)
+        bool AssignResult = assignCourseToInstructorlogic(db,selectedInstructor,1,"",newCourseName);
+        if(AssignResult)
             cout << "Course assigned successfully.\n";
         else
             cout << "Failed to assign course.\n";
@@ -2190,9 +2190,9 @@ void admin::assignCourseToInstructorMenu(vector<user*>& users,Database &db)
 
         // Call logic function
 
-        bool result = assignCourseToInstructorlogic(db,selectedInstructor,2,oldCourseName,newCourseName);
+        bool ModifyResult = assignCourseToInstructorlogic(db,selectedInstructor,2,oldCourseName,newCourseName);
 
-        if(result)
+        if(ModifyResult)
             cout << "Course modified successfully.\n";
         else
             cout << "Failed to modify course.\n";
