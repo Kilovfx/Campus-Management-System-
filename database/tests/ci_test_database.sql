@@ -143,7 +143,7 @@ CREATE TABLE instructor_courses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO instructor_courses VALUES
-(5006,10),(5006,12),(5001,22),(5001,25);
+(5006,10),(5006,12);
 
 CREATE TABLE logs (
   log_id INT NOT NULL AUTO_INCREMENT,

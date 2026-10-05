@@ -82,8 +82,10 @@ class admin : public user{
     int  getMajorID(Database& db,string majorName);   
     bool changeMajorDatabase(Database &db,user* selectedUser,string newMajor);
 
-    void assignCourseForInstructor(vector<user*>& users,Database &db);
+    void assignCourseToInstructorMenu(vector<user*>& users,Database &db);
+    bool assignCourseToInstructorlogic(Database& db,instructor* selectedInstructor,int choice,string oldCourseName,string newCourseName);
     bool assignCourseDatabase(Database &db,user* selectedInstructor,string courseName);
+    bool changeCourseDatabase(Database &db,user* selectedInstructor,string oldCourseName,string newCourseName);
     vector<CourseInfo> getCoursesForMajor(Database& db, string major);
 
 

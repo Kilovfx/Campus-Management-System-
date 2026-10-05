@@ -7,6 +7,8 @@
 #include "UserLoader.hpp"
 #include "Password.hpp"
 #include "mysql.h"
+#include "instructor.hpp"
+#include "Course.hpp"
 
 using namespace std;
 
@@ -17,7 +19,7 @@ int main()
 
     if(!db.connect()){
         cout<<"Failed connection . . .\n";
-        return 0;
+        return 1;
     }
 
     cout<<"Database connected successfully\n";
@@ -39,25 +41,85 @@ int main()
 
        admin admin1("admin", "456", "admin", 0);
 
-       cout << "\n--- Test View All Logs ---\n";
-       admin1.ViewAllLog(db);
+    // ==========================================
+    // Find an instructor
+    // ==========================================
+       
+        instructor* testInstructor = nullptr;
 
-       cout << "\n--- Test View Log By ID  ---\n";
-       bool logFound = admin1.ViewLogByID(db,2);
-       assert(logFound == true);
+        for(auto* loadedUser : users)
+        {
+            if(loadedUser->getRole() == "Instructor")
+            {
+                instructor* currentInstructor =
+                    dynamic_cast<instructor*>(loadedUser);
 
-       bool logNotFound = admin1.ViewLogByID(db,99999);
-       assert(logNotFound == false);
+                if(currentInstructor != nullptr &&
+                currentInstructor->getusername() == "ci_ahmed")
+                {
+                    testInstructor = currentInstructor;
+                    break;
+                }
+            }
+        }
 
-       cout << "\n--- Test View Logs By User ID ---\n";
+       assert(testInstructor != nullptr);
 
-       bool userLogsFound = admin1.ViewLogsByUserID(db, 1350);
-       assert(userLogsFound == true);
-    
-       bool noUserLogs = admin1.ViewLogsByUserID(db, 999999);
-       assert(noUserLogs == false);
+    // ==========================================
+    // Get courses
+    // ==========================================
 
-       cout << "\nAll tests passed successfully!\n";
+    vector<CourseInfo> courses = admin1.getCoursesForMajor(db,testInstructor->getMajor());
+       assert(courses.size() >= 2);
+
+       string firstCourse = courses[0].courseName;
+       string secondCourse = courses[1].courseName;
+
+       cout << "\nTest Instructor: "<< testInstructor->getusername() << endl;
+
+        cout << "First Course: " << firstCourse << endl;
+
+        cout << "Second Course: " << secondCourse << endl;
+
+        // ==========================================
+        // TEST 1
+        // assignCourseDatabase()
+        // ==========================================
+
+        cout << "\n--- Test assignCourseDatabase ---\n";
+
+        bool assignResult = admin1.assignCourseDatabase(db,testInstructor,firstCourse);
+
+        assert(assignResult == true);
+
+        cout << "assignCourseDatabase() passed.\n";
+
+        // ==========================================
+        // TEST 2
+        // changeCourseDatabase()
+        // ==========================================
+
+        cout << "\n--- Test changeCourseDatabase ---\n";
+
+
+        bool changeResult = admin1.changeCourseDatabase(db,testInstructor,firstCourse,secondCourse);
+
+        assert(changeResult = true);
+
+         cout << "changeCourseDatabase() passed.\n";
+
+        // ==========================================
+        // Finished
+        // ==========================================
+
+        cout << "\nAll tests passed successfully!\n";
+
+        for(auto* userAccount : users)
+        {
+            delete userAccount;
+        }
+
+        users.clear();
 
        db.disconnect();
 
@@ -169,43 +231,3 @@ string testchangemajor(vector<user*>& users,Database &db){
 }
 
 
-void testAssignCourseForInstructor(vector<user*>& users, Database& db)
-{
-    admin admin1("admin", "456", "admin", 0);
-
-    int testNumber = 1;
-
-    while(testNumber <= 4)
-    {
-        cout << "\n===== Assign Course Test "
-             << testNumber << " =====\n";
-
-        admin1.assignCourseForInstructor(users, db);
-
-        cout << "After Test " << testNumber << "\n";
-
-        // Clear current users from memory
-        for(auto* user : users)
-        {
-            delete user;
-        }
-
-        users.clear();
-
-        // Reload users from database
-        users = loadUsers(db);
-
-        cout << "\n===== Users after test =====\n";
-        admin1.ListAll(users,db);
-
-        testNumber++;
-    }
-
-    // Final cleanup
-    for(auto* user : users)
-    {
-        delete user;
-    }
-
-    users.clear();
-}

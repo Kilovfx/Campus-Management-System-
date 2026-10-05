@@ -476,6 +476,123 @@ bool admin::assignCourseDatabase(Database &db,user* selectedInstructor,string co
 
 }
 
+bool admin::changeCourseDatabase(Database &db,user* selectedInstructor,string oldCourseName,string newCourseName){
+
+    int instructorID = selectedInstructor->getID();
+
+    //get old Course Query
+    string oldCourseQuery = 
+        "SELECT course_id "
+        "FROM courses "
+        "WHERE course_name='" 
+        + db.escapeString(oldCourseName) + "'";
+    
+    MYSQL_RES* oldResult = db.executeSelect(oldCourseQuery);
+
+    if(oldResult == nullptr){
+        return false;
+    }
+
+    MYSQL_ROW oldrow = mysql_fetch_row(oldResult);
+
+    if(oldrow == nullptr){
+
+        mysql_free_result(oldResult);
+        return false;
+    }
+
+    int oldCourseID = stoi(oldrow[0]);
+    mysql_free_result(oldResult);
+
+    //get new Course Query
+    string newCourseQuery = 
+    "SELECT course_id "
+    "FROM courses "
+    "WHERE course_name='"
+    + db.escapeString(newCourseName) + "'";
+
+    MYSQL_RES* newResult = db.executeSelect(newCourseQuery);
+
+    if(newResult == nullptr){
+        return false;
+    }
+
+    MYSQL_ROW newrow = mysql_fetch_row(newResult);
+
+    if(newrow == nullptr){
+        mysql_free_result(newResult);
+        return false;
+    }
+
+    int newCourseID = stoi(newrow[0]);
+    mysql_free_result(newResult);
+    
+    if(newCourseID == oldCourseID){
+        cout <<"The new course is the same as the current course.\n";
+        return false;
+    }
+
+    //check if the new course choosen already exist !
+    string checkQuery =
+        "SELECT * "
+        "FROM instructor_courses "
+        "WHERE instructor_id=" + to_string(instructorID) +
+        " AND course_id=" + to_string(oldCourseID);
+
+    MYSQL_RES* checkResult = db.executeSelect(checkQuery);
+
+    if(checkResult == nullptr)
+    {
+        return false;
+    }
+
+    MYSQL_ROW checkRow = mysql_fetch_row(checkResult);
+
+    if(checkRow == nullptr)
+    {
+        mysql_free_result(checkResult);
+        cout << "Instructor does not have the old course.\n";
+        return false;
+    }
+
+    mysql_free_result(checkResult);
+
+
+    //update new course with the old
+    string updateQuery =
+        "UPDATE instructor_courses "
+        "SET course_id=" + to_string(newCourseID) +
+        " WHERE instructor_id=" + to_string(instructorID) +
+        " AND course_id=" + to_string(oldCourseID);
+
+    if(!db.executeQuery(updateQuery))
+    {
+        cout << "Failed to change course.\n";
+        return false;
+    }
+
+    return true;
+
+}
+
+bool admin::assignCourseToInstructorlogic(Database& db,instructor* selectedInstructor,int choice,string oldCourseName,string newCourseName){
+
+    if(selectedInstructor == nullptr)
+        return false;
+    
+
+    if(choice == 1){
+        return assignCourseDatabase(db,selectedInstructor,newCourseName);
+    }
+
+    if(choice == 2){
+        return changeCourseDatabase(db,selectedInstructor,oldCourseName,newCourseName);
+    }
+
+    return false;
+}
+
+
 bool admin::changeMajorDatabase(Database &db,user* selectedUser,string newMajor){
 
     int ID = selectedUser->getID();
@@ -835,7 +952,7 @@ void admin::ViewAllLog(Database& db){
     }
 
     MYSQL_ROW row;
-    bool found = false;  
+    bool found = false;
 
     cout << "\n--- All Logs ---\n";
 
@@ -1789,73 +1906,240 @@ void admin::changeMajor(vector<user*>& users,Database &db){
 }
 
 
-void admin::assignCourseForInstructor(vector<user*>& users,Database &db)
+void admin::assignCourseToInstructorMenu(vector<user*>& users,Database &db)
 {
+    // =========================
+    // Choose operation
+    // =========================
+
+    int operationChoice;
+
+    cout << "\n--- Course Management ---\n";
+    cout << "1. Assign new course\n";
+    cout << "2. Modify existing course\n";
+    cout << "0. Cancel\n";
+    cout << "Enter your choice: ";
+
+    cin >> operationChoice;
+
+    while(cin.fail() || operationChoice < 1 || operationChoice > 2 || hasExtraInputOnLine()){
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid choice. Enter 1, 2, or 0: ";
+        cin >> operationChoice;
+    }
+
+    if(operationChoice == 0)
+        return;
+
+    // =========================
+    // List instructors
+    // =========================  
+
     vector<instructor*> instructors;
 
     cout << "\n--- Instructors List ---\n";
 
-    for (const auto& user : users)
-    {
-        if (user->getRole() == "Instructor")
-        {
+    for(const auto& u : users){
+        if(u->getRole() == "Instructor"){
             instructor* currentInstructor =
-                dynamic_cast<instructor*>(user);
+                dynamic_cast<instructor*>(u);
 
-            if (currentInstructor != nullptr)
-            {
+            if(currentInstructor != nullptr){
                 instructors.push_back(currentInstructor);
 
                 cout << instructors.size()
-                     << ". " << currentInstructor->getusername()
-                     << " (ID: " << currentInstructor->getID()
-                     << ", Major: " << currentInstructor->getMajor()
+                     << ". "
+                     << currentInstructor->getusername()
+                     << " (ID: "
+                     << currentInstructor->getID()
+                     << ", Major: "
+                     << currentInstructor->getMajor()
                      << ")\n";
             }
         }
     }
 
-    if (instructors.empty())
-    {
+    if(instructors.empty()){
         cout << "No instructors found.\n";
         return;
     }
 
-    int instructorChoice;
-    instructor* selectedInstructor = nullptr;
+    // =========================
+    // Choose instructor
+    // =========================
 
-    while (selectedInstructor == nullptr)
+
+    int instructorChoice;
+
+    cout << "\nSelect an instructor (1-"
+        << instructors.size()
+        << ") or 0 to cancel: ";
+
+    cin >> instructorChoice;
+        while (cin.fail() || instructorChoice < 0 || instructorChoice > static_cast<int>(instructors.size()) ||hasExtraInputOnLine()){
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid choice. Select an instructor or 0 to cancel: ";
+            cin >> instructorChoice;
+        }
+
+    if(instructorChoice == 0)
+        return;
+
+    instructor* selectedInstructor = instructors[instructorChoice - 1];
+
+    // ==================================================
+    // CHOICE 1: INSERT NEW COURSE
+    // ==================================================
+
+    if(operationChoice == 1){
+
+        vector<CourseInfo> courses = getCoursesForMajor(db,selectedInstructor->getMajor());
+        if(courses.empty())
+        {
+            cout << "No courses found for this major.\n";
+            return;
+        }
+        
+         cout << "\n--- Available Courses for "<< selectedInstructor->getMajor()<< " ---\n";
+         for(int i = 0; i < static_cast<int>(courses.size()); i++){
+
+            cout << i + 1 << ". "
+                 << courses[i].courseName
+                 << " ("
+                 << courses[i].creditHours
+                 << " credits)\n";
+
+         }
+
+         int courseChoice;
+
+         cout << "\nSelect a course (1-"<< courses.size()<< ") or 0 to cancel: ";
+
+         cin >> courseChoice;
+
+        while(cin.fail() || courseChoice < 0 || courseChoice > static_cast<int>(courses.size()) || hasExtraInputOnLine()){
+
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            cout << "Invalid choice. Select a course or 0 to cancel: ";
+            cin >> courseChoice;
+
+        }
+
+        if(courseChoice == 0)
+            return;
+        string newCourseName = courses[courseChoice - 1].courseName;
+        bool result = assignCourseToInstructorlogic(db,selectedInstructor,1,"",newCourseName);
+        if(result)
+            cout << "Course assigned successfully.\n";
+        else
+            cout << "Failed to assign course.\n";
+
+        return;
+    }
+
+    // ==================================================
+    // CHOICE 2: MODIFY EXISTING COURSE
+    // ==================================================
+
+     if(operationChoice == 2)
     {
-        cout << "\nSelect an instructor (1-"
-             << instructors.size()
+        string query =
+            "SELECT c.course_name, c.credit_hours "
+            "FROM courses c "
+            "INNER JOIN instructor_courses ic "
+            "ON c.course_id = ic.course_id "
+            "WHERE ic.instructor_id = " +
+            to_string(selectedInstructor->getID());
+
+        MYSQL_RES* result =
+            db.executeSelect(query);
+
+        if(result == nullptr)
+        {
+            cout << "Failed to retrieve instructor courses.\n";
+            return;
+        }
+
+        vector<CourseInfo> currentCourses;
+
+        MYSQL_ROW row;
+
+        while((row = mysql_fetch_row(result)) != nullptr)
+        {
+            currentCourses.push_back(
+                CourseInfo(
+                    row[0],
+                    stoi(row[1])
+                )
+            );
+        }
+
+        mysql_free_result(result);
+
+        if(currentCourses.empty())
+        {
+            cout << "Instructor has no assigned courses.\n";
+            return;
+        }
+
+
+        // List current courses
+
+        cout << "\n--- Current Courses ---\n";
+
+        for(int i = 0;
+            i < static_cast<int>(currentCourses.size());
+            i++)
+        {
+            cout << i + 1 << ". "
+                 << currentCourses[i].courseName
+                 << " ("
+                 << currentCourses[i].creditHours
+                 << " credits)\n";
+        }
+
+
+        // Select old course
+
+        int oldCourseChoice;
+
+        cout << "\nSelect the course to modify (1-"
+             << currentCourses.size()
              << ") or 0 to cancel: ";
 
-        cin >> instructorChoice;
+        cin >> oldCourseChoice;
 
-        if (cin.fail())
+        while(cin.fail() ||
+              oldCourseChoice < 0 ||
+              oldCourseChoice > static_cast<int>(currentCourses.size()) ||
+              hasExtraInputOnLine())
         {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Invalid choice. Please enter a number.\n";
-            continue;
+
+            cout << "Invalid choice. Select a course or 0 to cancel: ";
+            cin >> oldCourseChoice;
         }
 
-        if (instructorChoice == 0)
+        if(oldCourseChoice == 0)
             return;
 
-        if (instructorChoice < 1 ||
-            instructorChoice > static_cast<int>(instructors.size()))
-        {
-            cout << "Invalid choice. Please choose an instructor from the list.\n";
-            continue;
-        }
+        string oldCourseName =
+            currentCourses[oldCourseChoice - 1].courseName;
 
-        selectedInstructor = instructors[instructorChoice - 1];
-    }
+
+        // List courses for instructor major
 
         vector<CourseInfo> courses =
-        getCoursesForMajor(db, selectedInstructor->getMajor());
-
+            getCoursesForMajor(
+                db,
+                selectedInstructor->getMajor()
+            );
 
         if(courses.empty())
         {
@@ -1863,73 +2147,58 @@ void admin::assignCourseForInstructor(vector<user*>& users,Database &db)
             return;
         }
 
-        const auto& currentCourses =
-            selectedInstructor->getCourses();
+        cout << "\n--- Available New Courses for "
+             << selectedInstructor->getMajor()
+             << " ---\n";
 
-        if (currentCourses.size() >= 2)
-        {
-            cout << "This instructor already has 2 courses.\n";
-            return;
-        }
-
-        cout << "\n--- Courses for "
-            << selectedInstructor->getMajor()
-            << " ---\n";
-
-        for(int i = 0; i < courses.size(); i++)
+        for(int i = 0;
+            i < static_cast<int>(courses.size());
+            i++)
         {
             cout << i + 1 << ". "
-            << courses[i].courseName
-            << " (" << courses[i].creditHours
-            << " credits)\n";
+                 << courses[i].courseName
+                 << " ("
+                 << courses[i].creditHours
+                 << " credits)\n";
         }
 
-        int courseChoice;
 
-        while (true)
+        // Select new course
+
+        int newCourseChoice;
+
+        cout << "\nSelect the new course (1-"
+             << courses.size()
+             << ") or 0 to cancel: ";
+
+        cin >> newCourseChoice;
+
+        while(cin.fail() || newCourseChoice < 0 || newCourseChoice > static_cast<int>(courses.size()) || hasExtraInputOnLine())
         {
-            cout << "\nSelect a course (1-"
-                 << courses.size()
-                 << ") or 0 to cancel: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-            cin >> courseChoice;
-
-            if (cin.fail())
-            {
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Invalid choice. Please enter a number.\n";
-                continue;
-            }
-
-            if (courseChoice == 0)
-                return;
-
-            if (courseChoice < 1 ||
-                courseChoice > static_cast<int>(courses.size()))
-            {
-                cout << "Invalid choice. Please choose a course from the list.\n";
-                continue;
-            }
-
-            CourseInfo selectedCourse = courses[courseChoice - 1];
-
-            // Save to database first
-            if(assignCourseDatabase(db, selectedInstructor, selectedCourse.courseName))
-            {
-                // Update memory only if database succeeded
-                selectedInstructor->assignCourse(selectedCourse);
-
-                addLog(db,"Assigned course " + selectedCourse.courseName +
-                " to instructor " + selectedInstructor->getusername());
-                cout << "Course assigned successfully.\n";
-
-            }
-            else {
-                   cout << "Failed to assign course.\n";
-                 }
-            break;
+            cout << "Invalid choice. Select a course or 0 to cancel: ";
+            cin >> newCourseChoice;
         }
+
+        if(newCourseChoice == 0)
+            return;
+
+        string newCourseName = courses[newCourseChoice - 1].courseName;
+
+
+        // Call logic function
+
+        bool result = assignCourseToInstructorlogic(db,selectedInstructor,2,oldCourseName,newCourseName);
+
+        if(result)
+            cout << "Course modified successfully.\n";
+        else
+            cout << "Failed to modify course.\n";
+
+        return;
+    }
 }
 
 
@@ -2149,7 +2418,7 @@ void admin::Showmeniu(vector<user*>& users,Database& db){
 
             case ASSIGN_COURSE:
             {
-                assignCourseForInstructor(users,db);
+                assignCourseToInstructorMenu(users,db);
             }
             break;
 
