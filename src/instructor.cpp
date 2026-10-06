@@ -1,5 +1,5 @@
-#include "instructor.hpp"
 #include "student.hpp"
+#include "instructor.hpp"
 #include "Password.hpp"
 #include <iostream>
 #include <vector>
@@ -81,7 +81,7 @@ void instructor::login(vector<user*>& users,Database &db) {
             bool locked = account->increaseFailedAttempts(db);
 
             if(locked) {
-                cout << "Admin account locked after too many failed attempts.\n";
+                cout << "Instructor account locked after too many failed attempts.\n";
                 account->addLog(db,"Instructor account locked after too many failed attempts");
                 return;
             }
@@ -171,35 +171,63 @@ void instructor::viewMyCourses(Database &db){
 const map<string, vector<CourseInfo>>& instructor::getCourseCatalog() {
     static const map<string, vector<CourseInfo>> courseCatalog = {
         {"Computer Science", {
-            CourseInfo("C++", 3), CourseInfo("Data Structures", 3),
-            CourseInfo("Databases", 3), CourseInfo("Operating Systems", 3),
+            CourseInfo("C++", 3),
+            CourseInfo("Data Structures", 3),
+            CourseInfo("Databases", 3),
+            CourseInfo("Operating Systems", 3),
             CourseInfo("Networks", 3)
         }},
+
         {"Electrical Engineering", {
-            CourseInfo("Circuit Analysis", 3), CourseInfo("Electromagnetics", 3),
-            CourseInfo("Digital Systems", 3), CourseInfo("Control Systems", 3)
+            CourseInfo("Circuit Analysis", 3),
+            CourseInfo("Electromagnetics", 3),
+            CourseInfo("Digital Systems", 3),
+            CourseInfo("Control Systems", 3)
         }},
+
         {"Business Administration", {
-            CourseInfo("Accounting", 3), CourseInfo("Finance", 3),
-            CourseInfo("Organizational Behavior", 3), CourseInfo("Business Ethics", 3)
+            CourseInfo("Accounting", 3),
+            CourseInfo("Finance", 3),
+            CourseInfo("Organizational Behavior", 3),
+            CourseInfo("Business Ethics", 3)
         }},
+
         {"Mechanical Engineering", {
-            CourseInfo("Thermodynamics", 3), CourseInfo("Fluid Mechanics", 3),
-            CourseInfo("Dynamics", 3), CourseInfo("Materials Science", 3)
+            CourseInfo("Thermodynamics", 3),
+            CourseInfo("Fluid Mechanics", 3),
+            CourseInfo("Dynamics", 3),
+            CourseInfo("Materials Science", 3)
         }},
+
         {"Civil Engineering", {
-            CourseInfo("Statics", 3), CourseInfo("Structural Analysis", 3),
-            CourseInfo("Geotechnical Engineering", 3), CourseInfo("Hydraulics", 3)
+            CourseInfo("Statics", 3),
+            CourseInfo("Structural Analysis", 3),
+            CourseInfo("Geotechnical Engineering", 3),
+            CourseInfo("Hydraulics", 3)
         }},
+
+        {"Cyber Security", {
+            CourseInfo("Network Security", 3),
+            CourseInfo("Ethical Hacking", 3),
+            CourseInfo("Digital Forensics", 3),
+            CourseInfo("Incident Response", 3)
+        }},
+
         {"Pharmacy", {
-            CourseInfo("Pharmacology", 3), CourseInfo("Pharmaceutics", 3),
-            CourseInfo("Medicinal Chemistry", 3), CourseInfo("Clinical Pharmacy", 3)
+            CourseInfo("Pharmacology", 3),
+            CourseInfo("Pharmaceutics", 3),
+            CourseInfo("Medicinal Chemistry", 3),
+            CourseInfo("Clinical Pharmacy", 3)
         }},
+
         {"Marketing", {
-            CourseInfo("Principles of Marketing", 3), CourseInfo("Consumer Behavior", 3),
-            CourseInfo("Digital Marketing", 3), CourseInfo("Brand Management", 3)
+            CourseInfo("Principles of Marketing", 3),
+            CourseInfo("Consumer Behavior", 3),
+            CourseInfo("Digital Marketing", 3),
+            CourseInfo("Brand Management", 3)
         }}
     };
+
     return courseCatalog;
 }
 
@@ -253,58 +281,220 @@ void instructor::viewCoursesForMajor(const string& major) {
     }
 }
 
+vector<CourseInfo> instructor::viewStudentCoursesDatabase(Database &db,student* selectedStudent){
+    vector<CourseInfo> courses;
 
-void instructor::viewStudentCourses(vector<user*>& users) {
+    if(selectedStudent == nullptr)
+        return courses;
+
+    int studentID = selectedStudent->getID();
+
+    string Query =
+    "SELECT c.course_name, c.credit_hours "
+    "FROM student_courses sc "
+    "INNER JOIN courses c "
+    "ON sc.course_id = c.course_id "
+    "WHERE sc.student_id = " + to_string(studentID);
+
+    MYSQL_RES* result = db.executeSelect(Query);
+
+    if(result == nullptr)
+        return courses;
+
+    MYSQL_ROW row;
+
+    while((row = mysql_fetch_row(result)) != nullptr){
+
+        courses.push_back(CourseInfo(row[0],stoi(row[1])));
+    }
+
+    mysql_free_result(result);
+    return courses;
+}
+
+
+void instructor::viewStudentCourses(vector<user*>& users, Database& db)
+{
     vector<student*> students;
+
     cout << "\n--- Students List ---\n";
-    for (const auto& user : users) {
-        if (user->getRole() == "Student") {
+
+    for (const auto& user : users)
+    {
+        if (user->getRole() == "Student")
+        {
             student* currentStudent = dynamic_cast<student*>(user);
-            if (currentStudent != nullptr) {
+
+            if (currentStudent != nullptr)
+            {
                 students.push_back(currentStudent);
-                cout << students.size() << ". " << currentStudent->getusername()
+
+                cout << students.size() << ". "
+                     << currentStudent->getusername()
                      << " (ID: " << currentStudent->getID()
                      << ", Major: " << currentStudent->getMajor() << ")\n";
             }
         }
     }
 
-    if (students.empty()) {
+    if (students.empty())
+    {
         cout << "No students found in the system.\n";
         return;
     }
 
     int choice;
-    cout << "Select a student (1-" << students.size() << ") or 0 to cancel:";
+
+    cout << "Select a student (1-" << students.size()
+         << ") or 0 to cancel: ";
+
     cin >> choice;
-    while (cin.fail() || choice < 0 ||
-           choice > static_cast<int>(students.size()) ||
-           hasExtraInputOnLine()) {
+
+    while (cin.fail() ||choice < 0 || choice > static_cast<int>(students.size()) || hasExtraInputOnLine())
+    {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid choice. Select a student (1-" << students.size()
+
+        cout << "Invalid choice. Select a student (1-"
+             << students.size()
              << ") or 0 to cancel: ";
+
         cin >> choice;
     }
 
-    if (choice == 0) {
+    if (choice == 0)
+    {
         cout << "Operation cancelled.\n";
         return;
     }
 
     student* selectedStudent = students[choice - 1];
-    const auto& enrolledCourses = selectedStudent->getEnrolledCourses();
-    cout << "\n--- Courses for Student: " << selectedStudent->getusername() << " ---\n";
-    if (enrolledCourses.empty()) {
+
+    // Get courses from database
+    vector<CourseInfo> enrolledCourses = viewStudentCoursesDatabase(db, selectedStudent);
+
+    cout << "\n--- Courses for Student: "<< selectedStudent->getusername() << " ---\n";
+
+    if (enrolledCourses.empty())
+    {
         cout << "No courses enrolled.\n";
-    } else {
-        for (const auto& course : enrolledCourses) {
-            cout << "- " << course.courseName  << " (" << course.creditHours << " credits)\n";
+    }
+    else
+    {
+        for (const auto& course : enrolledCourses)
+        {
+            cout << "- " << course.courseName
+                 << " (" << course.creditHours
+                 << " credits)\n";
         }
     }
 }
 
-void instructor::addCourse(vector<user*>& users) {
+bool instructor::addCourseDatabase(Database &db,student* selectedStudent,string CourseName){
+
+    if(selectedStudent == nullptr)
+        return false;
+
+    int StudentID = selectedStudent->getID();
+
+    string courseQuery = 
+    "SELECT course_id "
+    "FROM courses "
+    "WHERE course_name='"
+    + db.escapeString(CourseName) + "'";
+
+    MYSQL_RES* courseResult = db.executeSelect(courseQuery);
+
+    if(courseResult == nullptr)
+        return false;
+
+    MYSQL_ROW CourseRow = mysql_fetch_row(courseResult);
+
+    if(CourseRow == nullptr){
+        mysql_free_result(courseResult);
+        return false;
+    }
+
+    int courseID = stoi(CourseRow[0]);
+    mysql_free_result(courseResult);
+
+    string dublicateQuery =
+    "SELECT * "
+    "FROM student_courses "
+    "WHERE student_id=" + to_string(StudentID) +
+    " AND course_id=" + to_string(courseID);
+
+    MYSQL_RES* dublicateResult = db.executeSelect(dublicateQuery);
+
+    if(dublicateResult == nullptr)
+        return false;
+
+    MYSQL_ROW dublicateRow = mysql_fetch_row(dublicateResult);
+
+    if(dublicateRow != nullptr){
+        mysql_free_result(dublicateResult);
+        cout << "Student already has this course.\n";
+        return false;
+    }
+
+    mysql_free_result(dublicateResult);
+
+    string insertQuery = 
+    "INSERT INTO student_courses "
+    "(student_id, course_id, grade) "
+    "VALUES(" + to_string(StudentID) + "," + to_string(courseID) + ",NULL)"; 
+
+    if(!db.executeQuery(insertQuery)){
+        cout << "Failed to add course to database.\n";
+        return false;
+    }
+
+    return true;
+
+}
+
+bool instructor::addCourseLogic(Database &db,student* selectedStudent,string CourseName){
+
+    if(selectedStudent == nullptr)
+        return false;
+
+    string studentMajor = selectedStudent->getMajor();
+
+    const auto& courseCatalog = getCourseCatalog();
+
+    auto majorIt = courseCatalog.find(studentMajor);
+
+    if(majorIt == courseCatalog.end()){
+        return false;
+    }
+
+    int creditHours = -1;
+
+    for(const CourseInfo& course : majorIt->second){
+        if (course.courseName == CourseName){
+
+            creditHours = course.creditHours;
+            break;
+        }
+    }
+
+
+    if (creditHours == -1)
+        return false;
+
+    if (!addCourseDatabase(db,selectedStudent,CourseName)){
+        addLog(db, "Failed to add course " + CourseName + " to student " + selectedStudent->getusername());
+        return false;
+    }
+
+    //Update student in memory
+    selectedStudent->addCourse(CourseName,creditHours);
+
+    addLog(db, "Added course " + CourseName + " to student " + selectedStudent->getusername());
+    return true;
+}
+
+void instructor::addCourseMenu(vector<user*>& users,Database &db) {
     // Display all students
     cout << "\n--- Students List ---\n";
     vector<student*> studentList;
@@ -312,11 +502,16 @@ void instructor::addCourse(vector<user*>& users) {
     
     for (const auto& user : users) {
         if (user->getRole() == "Student") {
-            studentCount++;
             student* std = dynamic_cast<student*>(user);
-            if (std != nullptr) {
-                studentList.push_back(std);
-                cout << studentCount << ". " << user->getusername() << " (ID: " << user->getID() << ", Major: " << user->getMajor() << ")\n";
+
+            if(std != nullptr){
+               studentList.push_back(std);
+                studentCount++;
+
+                cout << studentCount << ". "
+                     << std->getusername()
+                     << " (ID: " << std->getID()
+                     << ", Major: " << std->getMajor() << ")\n"; 
             }
         }
     }
@@ -329,83 +524,113 @@ void instructor::addCourse(vector<user*>& users) {
     
     // Let instructor choose a student
     int choice;
-    cout << "\nSelect a student to add the course to (1-" << studentCount << "): ";
+    cout << "\nSelect a student to add the course to (1-"<< studentCount << ") or 0 to cancel: ";
     cin >> choice;
     
     // Validate input
-    while (cin.fail() || choice < 1 || choice > studentCount || hasExtraInputOnLine())
+    while (cin.fail() || choice < 0 || choice > studentCount || hasExtraInputOnLine())
     
     {
         cin.clear();  // clear the error flag
         cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-        cout << "Invalid input! Please enter a number between 1 and " << studentCount << ".\n";
-        cout << "Select a student to add the course to (1-" << studentCount << "): ";
+        cout << "Invalid input!" << endl;
+        cout << "\nSelect a student to add the course to (1-"<< studentCount << ") or 0 to cancel: ";
         cin >> choice;
         continue;  // ask for input again
+
     }
+
+    if (choice == 0)
+    {
+    cout << "Operation cancelled.\n";
+    return;
+    }
+    
     
     
     // Add course to the selected student (restricted by major)
     student* selectedStudent = studentList[choice - 1];
-    const string studentMajor = selectedStudent->getMajor();
-    const auto& courseCatalog = getCourseCatalog();
-    auto catalogIt = courseCatalog.find(studentMajor);
+    string studentMajor = selectedStudent->getMajor();
 
-    // Validate if major exists in catalog
-    if (catalogIt == courseCatalog.end()) {
-        cout << "No course catalog found for major: " << studentMajor << "\n";
+    const auto& courseCatalog = getCourseCatalog();
+
+    auto majorIt = courseCatalog.find(studentMajor);
+
+    if (majorIt == courseCatalog.end())
+    {
+        cout << "No course catalog found for major: "
+             << studentMajor << "\n";
         return;
     }
 
-    while (true) {
-        // Display courses for the student's major
+    while (true)
+    {
+        // Display courses
         cout << "\nCourses for " << studentMajor << ":\n";
-        cout << "\n";
-        for (size_t i = 0; i < catalogIt->second.size(); ++i) {
-            cout << (i + 1) << ". " 
-            << catalogIt->second[i].courseName << " (" << catalogIt->second[i].creditHours << " credits)\n";
+
+        for (size_t i = 0; i < majorIt->second.size(); ++i)
+        {
+            cout << i + 1 << ". "
+                << majorIt->second[i].courseName
+                << " (" << majorIt->second[i].creditHours
+                << " credits)\n";
         }
 
-        // Prompt for course selection
+        // Select course
         int courseChoice;
-        cout << "\nSelect a course to add (1-" << catalogIt->second.size() << ") or 0 to finish: ";
+
+        cout << "\nSelect a course (1-"
+            << majorIt->second.size()
+            << ") or 0 to cancel: ";
+
         cin >> courseChoice;
-        cout<<endl;
-        // Validate course choice input
-        while (cin.fail() || courseChoice < 0 || courseChoice > static_cast<int>(catalogIt->second.size()) || hasExtraInputOnLine()) {
+
+        while (cin.fail() ||
+            courseChoice < 0 ||
+            courseChoice > static_cast<int>(majorIt->second.size()) ||
+            hasExtraInputOnLine())
+        {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Invalid input! Please enter a number between 0 and " << catalogIt->second.size() << ": ";
+
+            cout << "Invalid input! Please enter a number between 0 and "
+                << majorIt->second.size() << ": ";
+
             cin >> courseChoice;
         }
 
-        // Check for finish
-        if (courseChoice == 0) {
+        // Cancel / finish
+        if (courseChoice == 0)
+        {
             cout << "Finished adding courses.\n";
             return;
         }
 
-        // Get the selected course name
-        CourseInfo selectedCourse = catalogIt->second[courseChoice - 1];
+        // Get selected course
+        const CourseInfo& selectedCourse =
+            majorIt->second[courseChoice - 1];
 
         string courseName = selectedCourse.courseName;
-        int creditHours = selectedCourse.creditHours;   
-        if (selectedStudent->hasCourse(courseName)) {
-            cout << "Student " << selectedStudent->getusername() << " already has the course: " << courseName << "\n";
-            continue;
-        }
-        selectedStudent->addCourse(courseName, creditHours);
 
-        // Add course to instructor's course list if not already there (avoid duplicates)
-        auto courseIt = find_if(courses.begin(), courses.end(),
-            [&](const CourseInfo& courseInfo) {
-                return courseInfo.courseName == courseName;
-            });
-        if (courseIt == courses.end()) {
-            courses.push_back(CourseInfo(courseName, creditHours));
-        }
+        // Call logic
+        bool result = addCourseLogic(
+            db,
+            selectedStudent,
+            courseName
+        );
 
-        cout << "Course " << courseName << " added to student " << selectedStudent->getusername() << " successfully.\n";
+        if (result)
+        {
+            cout << "Course " << courseName
+                << " added to student "
+                << selectedStudent->getusername()
+                << " successfully.\n";
+        }
+        else
+        {
+            cout << "Failed to add course "
+                << courseName << ".\n";
+        }
     }
 }
 
@@ -736,7 +961,7 @@ void instructor::showMenu(vector<user*>& users,Database &db) {
 
         switch (choice) {
             case 1: {
-                addCourse(users);
+                addCourseMenu(users,db);
                 break;
             }
             case 2: {
@@ -752,7 +977,7 @@ void instructor::showMenu(vector<user*>& users,Database &db) {
                 break; 
                 }
             case 5:
-                viewStudentCourses(users);
+                viewStudentCourses(users,db);
                 break;   
             case 6:
                 viewStudents(users);

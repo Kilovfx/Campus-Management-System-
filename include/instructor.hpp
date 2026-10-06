@@ -23,14 +23,20 @@ public:
     void viewMyCourses(Database& db);
     void logout(Database& db) override;
     void showprofile(Database& db) override;
-    void addCourse(vector<user*>& users);
+    bool addCourseDatabase(Database &db,student* selectedStudent,string CourseName);
+    bool addCourseLogic(Database &db,student* selectedStudent,string CourseName);
+    void addCourseMenu(vector<user*>& users,Database &db);
+
     void addGrade(vector<user*>& users); 
     void removeCourse(vector<user*>& users,Database& db);
     void viewCourses(vector<user*>& users);
     void viewStudents(vector<user*>& users);
     void listAllMajors();
     void viewCoursesForMajor(const string& major);
-    void viewStudentCourses(vector<user*>& users);
+
+    void viewStudentCourses(vector<user*>& users,Database &db);
+    vector<CourseInfo> viewStudentCoursesDatabase(Database &db,student* selectedStudent);
+
     void showMenu(vector<user*>& users,Database &db);
     void assignCourse(const CourseInfo& course);
     void clearCourses();
