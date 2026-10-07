@@ -57,6 +57,7 @@ void instructor::login(vector<user*>& users,Database &db) {
         //check if its manually locked by Admin
         if(account != nullptr && account->isUserLocked(db)){
             cout <<"Account is locked. Login is not available.\n";
+            account->addLog(db, "Instructor attempted to login while account was locked");
             return;
         }
 
@@ -111,6 +112,7 @@ void instructor::login(vector<user*>& users,Database &db) {
 
 void instructor::logout(Database& db) {
     cout << username << " logged out.\n";
+    addLog(db, "Instructor logged out");
 }
 
 void instructor::showprofile(Database& db) {
@@ -634,7 +636,53 @@ void instructor::addCourseMenu(vector<user*>& users,Database &db) {
     }
 }
 
+bool instructor::removeCourseDatabase(Database &db,student* selectedStudent,string courseName){
+    if(selectedStudent == nullptr)
+        return false;
 
+    int studentID = selectedStudent->getID();
+
+    //get course id
+    string courseQuery =
+    "SELECT course_id "
+    "FROM courses "
+    "WHERE course_name='"
+    + db.escapeString(courseName) + "'";
+
+    MYSQL_RES* courseResult = db.executeSelect(courseQuery);
+
+    if(courseResult == nullptr)
+        return false;
+
+    MYSQL_ROW courseRow = mysql_fetch_row(courseResult);
+
+    if(courseRow == nullptr){
+        mysql_free_result(courseResult);
+        return false;
+    }
+
+    int courseID = stoi(courseRow[0]);
+    mysql_free_result(courseResult);
+
+    // Delete the student's course
+
+    string DeleteQuery = 
+    "DELETE FROM student_courses "
+    "WHERE student_id=" + to_string(studentID) +
+    " AND course_id=" + to_string(courseID);
+
+    if(!db.executeQuery(DeleteQuery)){
+        cout << "Failed to remove course from database.\n";
+        return false;
+    }
+
+    if(mysql_affected_rows(db.getConnection()) != 1){
+        cout << "Student does not have this course.\n";
+        return false;
+    }
+
+    return true;
+}
 
 void instructor::removeCourse(vector<user*>& users,Database& db) {
     cout << "\n--- Students List ---\n";
@@ -670,13 +718,16 @@ void instructor::removeCourse(vector<user*>& users,Database& db) {
 
     student* selectedStudent = studentList[choice - 1];
 
-    const auto& enrolledCourses = selectedStudent->getEnrolledCourses();
+    vector<CourseInfo> enrolledCourses = viewStudentCoursesDatabase(db,selectedStudent);
+
     if (enrolledCourses.empty()) {
         cout << "Student " << selectedStudent->getusername() << " has no courses to remove.\n";
         return;
     }
 
+    //display Courses
     cout << "\nCourses for " << selectedStudent->getusername() << ":\n";
+    
     for (size_t i = 0; i < enrolledCourses.size(); ++i) {
         cout << (i + 1) << ". " << enrolledCourses[i].courseName << " (" << enrolledCourses[i].creditHours << " credits)\n";
     }
@@ -698,103 +749,33 @@ void instructor::removeCourse(vector<user*>& users,Database& db) {
     }
 
     string courseName = enrolledCourses[courseChoice - 1].courseName;
-    selectedStudent->removeCourse(courseName,db);
+    
+    if(!removeCourseDatabase(db,selectedStudent,courseName)){
 
-    bool courseStillAssigned = false;
-    for (const auto& user : users) {
-        if (user->getRole() == "Student") {
-            student* std = dynamic_cast<student*>(user);
-            if (std != nullptr && std->hasCourse(courseName)) {
-                courseStillAssigned = true;
-                break;
-            }
-        }
-    }
+        cout << "Failed to remove course "
+         << courseName << ".\n";
 
-    if (!courseStillAssigned) {
-        auto it = remove_if(courses.begin(), courses.end(),
-            [&](const CourseInfo& courseInfo) {
-                return courseInfo.courseName == courseName;
-            });
-        if (it != courses.end()) {
-            courses.erase(it, courses.end());
-        }
-    }
-
-    cout << "Course " << courseName << " removed successfully from " << selectedStudent->getusername() << ".\n";
-}
-
-void instructor::viewCourses(vector<user*>& users) {
-    const auto& courseCatalog = getCourseCatalog();
-    if (courseCatalog.empty()) {
-        cout << "No course catalog available.\n";
+        addLog(db, "Failed to remove course " + courseName + " from student " + selectedStudent->getusername());
         return;
     }
-
-    vector<string> majors;
-    for (const auto& entry : courseCatalog) {
-        majors.push_back(entry.first);
+    
+    auto& courses = selectedStudent->getEnrolledCourses();
+    
+    auto it = remove_if(courses.begin(),courses.end(),[&](const CourseGrade& course)
+    {
+        return course.courseName == courseName;
     }
+);
 
-    cout << "\nAvailable majors:\n";
-    for (size_t i = 0; i < majors.size(); ++i) {
-        cout << (i + 1) << ". " << majors[i] << "\n";
-    }
+    courses.erase(it, courses.end());
 
-    int majorChoice;
-    cout << "Select a major to view courses (1-" << majors.size() << ") or 0 to cancel: ";
-    cin >> majorChoice;
+    cout << "Course " << courseName
+        << " removed successfully from "
+        << selectedStudent->getusername() << ".\n";
 
-    while (cin.fail() || majorChoice < 0 || majorChoice > static_cast<int>(majors.size()) || hasExtraInputOnLine()) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid input! Please enter a number between 0 and " << majors.size() << ": ";
-        cin >> majorChoice;
-    }
-
-    if (majorChoice == 0) {
-        cout << "Operation cancelled.\n";
-        return;
-    }
-
-    const string& selectedMajor = majors[majorChoice - 1];
-    auto catalogIt = courseCatalog.find(selectedMajor);
-
-    cout << "\nAvailable courses for " << selectedMajor << ":\n";
-    for (const auto& course : catalogIt->second) {
-        cout << "- " << course.courseName << " (" << course.creditHours << " credits)\n";
-    }
-
-    vector<string> taughtForMajor;
-    for (const auto& courseInfo : courses) {
-        const string courseName = courseInfo.courseName;
-        if (find_if(catalogIt->second.begin(), catalogIt->second.end(),
-                    [&](const CourseInfo& catalogCourse) {
-                        return catalogCourse.courseName == courseName;
-                    }) != catalogIt->second.end()) {
-            taughtForMajor.push_back(courseName);
-        }
-    }
-
-    cout << "\nCourses assigned to students for " << selectedMajor << ":\n";
-    if (taughtForMajor.empty()) {
-        cout << "None\n";
-    } else {
-        for (const auto& course : taughtForMajor) {
-            int studentCount = 0;
-            for (const auto& user : users) {
-                if (user->getRole() == "Student") {
-                    student* enrolledStudent = dynamic_cast<student*>(user);
-                    if (enrolledStudent != nullptr && enrolledStudent->hasCourse(course)) {
-                        ++studentCount;
-                    }
-                }
-            }
-            cout << "- " << course << " (" << studentCount << " "
-                 << (studentCount == 1 ? "Student" : "Students") << ")\n";
-        }
-    }
+    addLog(db, "Removed course " + courseName + " from student " + selectedStudent->getusername());
 }
+
 
 void instructor::viewStudents(vector<user*>& users) {
     cout << "Students enrolled in the courses being taught by " << username << ":\n";
@@ -805,8 +786,56 @@ void instructor::viewStudents(vector<user*>& users) {
     }
 }
 
+bool instructor::addGradeDatabase(Database &db,student* selectedStudent,string courseName,int grade){
+    
+    if(selectedStudent == nullptr)
+        return false;
 
-void instructor::addGrade(vector<user*>& users) {
+    if(grade < 0 || grade > 100)
+        return false;
+
+    int StudentID = selectedStudent->getID();
+
+    string courseQuery = 
+    "SELECT course_id "
+    "FROM courses "
+    "WHERE course_name='" + db.escapeString(courseName) + "'";
+
+    MYSQL_RES* CourseResult = db.executeSelect(courseQuery);
+
+    if(CourseResult == nullptr)
+        return false;
+    
+    MYSQL_ROW CourseRow = mysql_fetch_row(CourseResult);
+
+    if(CourseRow == nullptr){
+        mysql_free_result(CourseResult);
+        return false;
+    }
+
+    int CourseID = stoi(CourseRow[0]);
+
+    mysql_free_result(CourseResult);
+
+    //Update Grade 
+
+    string UpdateQuery =
+    "UPDATE student_courses "
+    "SET grade=" + to_string(grade) +
+    " WHERE student_id=" + to_string(StudentID) +
+    " AND course_id=" + to_string(CourseID);
+
+    if(!db.executeQuery(UpdateQuery)){
+
+        cout << "Failed to update grade in database.\n";
+        return false;
+    }
+
+    return true;
+
+}
+
+void instructor::addGrade(vector<user*>& users,Database &db) {
     cout << "\n--- Students List ---\n";
     vector<student*> studentList;
     int studentCount = 0;
@@ -885,10 +914,10 @@ void instructor::addGrade(vector<user*>& users) {
             return;
         }
 
+        string courseName = enrolledCourses[courseChoice - 1].courseName;
         int grade;
-        cout << "Enter the grade for "
-             << enrolledCourses[courseChoice - 1].courseName
-             << " (0-100): ";
+
+        cout << "Enter the grade for " << courseName << " (0-100): ";
         cin >> grade;
 
         while (cin.fail() || grade < 0 || grade > 100 || hasExtraInputOnLine()) {
@@ -898,7 +927,14 @@ void instructor::addGrade(vector<user*>& users) {
             cin >> grade;
         }
 
+        if(!addGradeDatabase(db,selectedStudent,courseName,grade)){
+            cout << "Failed to update grade.\n";
+            addLog(db,"Failed to add grade for " + courseName + " to student " + selectedStudent->getusername());
+            continue;
+        }
+
         enrolledCourses[courseChoice - 1].grade = grade;
+
         cout << "\nGrade added successfully!\n";
         cout << "Student: " << selectedStudent->getusername() << "\n";
         cout << "Course: "
@@ -906,6 +942,7 @@ void instructor::addGrade(vector<user*>& users) {
         cout << "Grade: "
              << enrolledCourses[courseChoice - 1].grade
              << "/100\n";
+        addLog(db,"Added grade " + to_string(grade) + " for " + courseName + " to student " + selectedStudent->getusername());
     }
 
 }
@@ -969,7 +1006,7 @@ void instructor::showMenu(vector<user*>& users,Database &db) {
                 break;
             }
             case 3:{
-                addGrade(users);
+                addGrade(users,db);
                 break;
             }
             case 4:{

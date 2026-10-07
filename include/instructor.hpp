@@ -27,9 +27,13 @@ public:
     bool addCourseLogic(Database &db,student* selectedStudent,string CourseName);
     void addCourseMenu(vector<user*>& users,Database &db);
 
-    void addGrade(vector<user*>& users); 
+    bool addGradeDatabase(Database &db,student* selectedStudent,string courseName,int grade);
+    void addGrade(vector<user*>& users,Database &db); 
+
+
     void removeCourse(vector<user*>& users,Database& db);
-    void viewCourses(vector<user*>& users);
+    bool removeCourseDatabase(Database &db,student* selectedStudent,string courseName);
+
     void viewStudents(vector<user*>& users);
     void listAllMajors();
     void viewCoursesForMajor(const string& major);
