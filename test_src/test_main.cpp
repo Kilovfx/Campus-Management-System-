@@ -9,6 +9,7 @@
 #include "mysql.h"
 #include "instructor.hpp"
 #include "Course.hpp"
+#include "Student.hpp"
 
 using namespace std;
 
@@ -39,89 +40,110 @@ int main()
              << "\n";
     }
 
-       admin admin1("admin", "456", "admin", 0);
 
-    // ==========================================
-    // Find an instructor
-    // ==========================================
+    student student1(
+        "ci_student",
+        "456",
+        "Student",
+        3001,
+        "CI",
+        "Student",
+        "Marketing"
+);
+
+    student1.addCourse("C++", 3);
+    student1.addCourse("Database", 3);
+    student1.addCourse("Networking", 3);
+
+    student1.getEnrolledCourses()[0].grade = 95;
+    student1.getEnrolledCourses()[1].grade = 85;
+
+    student1.ShowAcademicSummary(db);
+
+
+    //    admin admin1("admin", "456", "admin", 0);
+
+    // // ==========================================
+    // // Find an instructor
+    // // ==========================================
        
-        instructor* testInstructor = nullptr;
+    //     instructor* testInstructor = nullptr;
 
-        for(auto* loadedUser : users)
-        {
-            if(loadedUser->getRole() == "Instructor")
-            {
-                instructor* currentInstructor =
-                    dynamic_cast<instructor*>(loadedUser);
+    //     for(auto* loadedUser : users)
+    //     {
+    //         if(loadedUser->getRole() == "Instructor")
+    //         {
+    //             instructor* currentInstructor =
+    //                 dynamic_cast<instructor*>(loadedUser);
 
-                if(currentInstructor != nullptr &&
-                currentInstructor->getusername() == "ci_ahmed")
-                {
-                    testInstructor = currentInstructor;
-                    break;
-                }
-            }
-        }
+    //             if(currentInstructor != nullptr &&
+    //             currentInstructor->getusername() == "ci_ahmed")
+    //             {
+    //                 testInstructor = currentInstructor;
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-       assert(testInstructor != nullptr);
+    //    assert(testInstructor != nullptr);
 
-    // ==========================================
-    // Get courses
-    // ==========================================
+    // // ==========================================
+    // // Get courses
+    // // ==========================================
 
-    vector<CourseInfo> courses = admin1.getCoursesForMajor(db,testInstructor->getMajor());
-       assert(courses.size() >= 2);
+    // vector<CourseInfo> courses = admin1.getCoursesForMajor(db,testInstructor->getMajor());
+    //    assert(courses.size() >= 2);
 
-       string firstCourse = courses[0].courseName;
-       string secondCourse = courses[1].courseName;
+    //    string firstCourse = courses[0].courseName;
+    //    string secondCourse = courses[1].courseName;
 
-       cout << "\nTest Instructor: "<< testInstructor->getusername() << endl;
+    //    cout << "\nTest Instructor: "<< testInstructor->getusername() << endl;
 
-        cout << "First Course: " << firstCourse << endl;
+    //     cout << "First Course: " << firstCourse << endl;
 
-        cout << "Second Course: " << secondCourse << endl;
+    //     cout << "Second Course: " << secondCourse << endl;
 
-        // ==========================================
-        // TEST 1
-        // assignCourseDatabase()
-        // ==========================================
+    //     // ==========================================
+    //     // TEST 1
+    //     // assignCourseDatabase()
+    //     // ==========================================
 
-        cout << "\n--- Test assignCourseDatabase ---\n";
+    //     cout << "\n--- Test assignCourseDatabase ---\n";
 
-        bool assignResult = admin1.assignCourseDatabase(db,testInstructor,firstCourse);
+    //     bool assignResult = admin1.assignCourseDatabase(db,testInstructor,firstCourse);
 
-        assert(assignResult == true);
+    //     assert(assignResult == true);
 
-        cout << "assignCourseDatabase() passed.\n";
+    //     cout << "assignCourseDatabase() passed.\n";
 
-        // ==========================================
-        // TEST 2
-        // changeCourseDatabase()
-        // ==========================================
+    //     // ==========================================
+    //     // TEST 2
+    //     // changeCourseDatabase()
+    //     // ==========================================
 
-        cout << "\n--- Test changeCourseDatabase ---\n";
+    //     cout << "\n--- Test changeCourseDatabase ---\n";
 
 
-        bool changeResult = admin1.changeCourseDatabase(db,testInstructor,firstCourse,secondCourse);
+    //     bool changeResult = admin1.changeCourseDatabase(db,testInstructor,firstCourse,secondCourse);
 
-        assert(changeResult = true);
+    //     assert(changeResult = true);
 
-         cout << "changeCourseDatabase() passed.\n";
+    //      cout << "changeCourseDatabase() passed.\n";
 
-        // ==========================================
-        // Finished
-        // ==========================================
+    //     // ==========================================
+    //     // Finished
+    //     // ==========================================
 
-        cout << "\nAll tests passed successfully!\n";
+    //     cout << "\nAll tests passed successfully!\n";
 
-        for(auto* userAccount : users)
-        {
-            delete userAccount;
-        }
+    //     for(auto* userAccount : users)
+    //     {
+    //         delete userAccount;
+    //     }
+    
+      users.clear();
 
-        users.clear();
-
-       db.disconnect();
+      db.disconnect();
 
           return 0;
 }

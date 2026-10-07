@@ -33,17 +33,23 @@ void student::loadCourse(string courseName, double grade, double creditHours)
 
 void student::login(vector<user*>& users,Database &db) {
     string inputUsername, inputPassword;
-    user* account = nullptr;
-    int unknownAccountAttempts = 0;
+    int attempts = 0;
+    const int maxAttempts = 6;
 
     while (true) {
+
         cout << "Enter username: ";
         cin >> inputUsername;
-        account = nullptr;
+
         if (hasExtraInputOnLine()) {
             cout << "Invalid input: spaces are not allowed in usernames.\n";
             inputUsername.clear();
         }
+
+        cout << "Enter password: ";
+        inputPassword = encryptpass();
+
+        user* account = nullptr;
 
         for (auto* userAccount : users) {
             if (userAccount->getusername() == inputUsername &&
@@ -53,59 +59,61 @@ void student::login(vector<user*>& users,Database &db) {
             }
         }
 
-        if (account != nullptr && !account->isUserLocked(db)) {
+        //check if account manually locked by Admin
+        if (account != nullptr && account->isUserLocked(db)) {
             cout << "Account is locked. Login is not available.\n";
+            account->addLog(db, "Student attempted to login while account was locked");
             return;
         }
 
-        cout << "Enter password: ";
-        inputPassword = encryptpass();
 
-        if (account != nullptr && authenticate(inputUsername, inputPassword, users)) {
-            break;
+        if (account != nullptr && account->authenticate(inputUsername, inputPassword)) {
+            user::recordLoginAttempts(db, inputUsername , true);
+            account->resetFailedAttempts(db);
+            attempts = 0;
+            this->username = inputUsername;
+            cout << "User : " << username << " logged in successfully!\n";
+            account->addLog(db, "Student logged in");
+            return;
         }
 
-        if (account != nullptr) {
-            account->increaseFailedAttempts(db);
-            if (!account->isUserLocked(db)) {
-                cout << "Account locked after 6 incorrect attempts try again 1 min later.\n";
-                account->addLog(db, "Student account locked after too many failed login attempts");
-                return;
-            }
-        } else {
-            ++unknownAccountAttempts;
-            if (unknownAccountAttempts >= 3) {
-                cout << "Login attempts exceeded.\n";
-                return;
-            }
+        user::recordLoginAttempts(db,inputUsername,false);
+        if(account != nullptr){
+
+            bool locked = account->increaseFailedAttempts(db);
+
+                if(locked){
+                    cout << "Student account locked after too many failed attempts.\n";
+                    account->addLog(db,"Student account locked after too many failed attempts");
+                    return;
+                }
+        }
+
+        attempts++;
+
+        //Unknown username reaches 6 attempts
+        if(attempts >= maxAttempts) {
+            cout <<"Login failed after 6 attempts.\n";
+            return;
+        }
+
+        //Brute-force protiection 
+        if(attempts >= 3){
+            int waitTime = 15 * (attempts - 2);
+            cout << "You have made "<< attempts<< " incorrect attempts, Please wait for " << waitTime << " seconds .. \n";
+            this_thread::sleep_for(chrono::seconds(waitTime));
+            cout << "You can try now.\n";
+
         }
 
         cout << "Invalid credentials. Please try again.\n";
     }
-
-    if (account != nullptr) {
-        this->username = inputUsername;
-        cout << username << " logged in successfully.\n";
-        addLog(db, "Student logged in");
-    } else {
-        cout << "Invalid credentials. Login failed.\n";
-    }
 }
 
-
-
-
-bool student::authenticate(const string& username, const string& password, vector<user*>& users) {
-    for (const auto& u : users) {
-        if (u->getusername() == username && verifypassword(password,u->getpassword()) && u->getRole() == "Student") {
-            return true;
-        }
-    }
-    return false;
-}
 
 void student::logout(Database& db) {
     cout << username << " logged out.\n";
+    addLog(db,"Student logged out.");
 }
 
 void student::showprofile(Database& db) {
@@ -155,6 +163,45 @@ std::vector<CourseGrade>& student::getEnrolledCourses() {
     return enrolledCourses;
 }
 
+void student::ShowAcademicSummary(Database &db){
+    int totalCourses = static_cast<int>(enrolledCourses.size());
+    int completed = 0;
+    int notGraded = 0;
+    int totalCredits = 0;
+    double totalPoints = 0;
+
+    for(const auto& course : enrolledCourses){
+        totalCredits += course.creditHours;
+
+        if(course.grade == -1){
+            notGraded++;
+        }
+        else {
+            completed++;
+            totalPoints = totalPoints + ConvertGradeToGPA(course.grade) * course.creditHours;
+        }
+    }
+
+    double GPA = 0;
+
+    if(totalCredits > 0){
+        GPA = totalPoints / totalCredits;
+    }
+    cout << "\n-----------------------------\n";
+    cout << "Academic Summary\n";
+    cout << "-----------------------------\n";
+    cout << "Student: " << first_name <<" "<< last_name << endl;
+    cout << "Major: " << major << endl;
+    cout << "Total Courses: " << totalCourses << endl;
+    cout << "Completed: " << completed << endl;
+    cout << "Not Graded: " << notGraded << endl;
+    cout << "Total Credits: " << totalCredits << endl;
+    cout << "GPA: " << fixed << setprecision(2) << GPA << " / 5.00" << endl;
+    cout << "-----------------------------\n";
+
+    addLog(db, "Viewed academic summary");
+}
+
 void student::viewCourses(Database& db) {
     cout << "Courses for " << username << ":\n";
     for (const auto& course : enrolledCourses) {
@@ -163,7 +210,7 @@ void student::viewCourses(Database& db) {
     addLog(db,"Viewed courses");
 }
 
-void student::ShowGrades(){
+void student::ShowGrades(Database &db){
 
      cout << "\n-----------------------------\n";
      cout << "Grades for: " << username << endl;
@@ -194,6 +241,7 @@ void student::ShowGrades(){
          double gpa = totalPoints / totalCredit;
          cout << "-----------------------------\n";
          cout << "Total GPA: " << fixed << setprecision(2) << gpa << endl;
+         addLog(db, "Viewed His Grades");
      }
 }
 
@@ -205,15 +253,16 @@ void student::showMenu(std::vector<user*>& users,Database& db) {
         cout << "1. View Courses\n";
         cout << "2. Show Grades\n";
         cout << "3. Show Profile\n";
-        cout << "4. Logout\n";
+        cout << "4. Academic Summary\n";
+        cout << "5. Logout\n";
         cout << "Enter your choice: ";
         cin >> choice;
         cout << "\n";
         
-        if(cin.fail() || choice < 1 || choice > 4 || hasExtraInputOnLine()) {
+        if(cin.fail() || choice < 1 || choice > 5 || hasExtraInputOnLine()) {
             cin.clear();  // clear the error flag
             cin.ignore(numeric_limits<streamsize>::max(), '\n');  // ignore the invalid input
-            cout << "Invalid input! Please enter a number between 1 and 4.\n";
+            cout << "Invalid input! Please enter a number between 1 and 5.\n";
             continue;  // ask for input again
         }
 
@@ -222,18 +271,21 @@ void student::showMenu(std::vector<user*>& users,Database& db) {
                 viewCourses(db);
                 break;
             case 2:
-                ShowGrades();
+                ShowGrades(db);
                 break;
             case 3:
                 showprofile(db);
                 break;
             case 4:
+                ShowAcademicSummary(db);
+                break;
+            case 5:
                 logout(db);
                 break;
             default:
                 cout << "Invalid choice. Please try again.\n";
         }
-    } while (choice != 4);
+    } while (choice != 5);
 }
 
 string student::encryptpass() {

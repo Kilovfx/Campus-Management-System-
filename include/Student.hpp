@@ -23,7 +23,6 @@ public:
             std::string first_name, std::string last_name, std::string major);
 
     void login(std::vector<user*>& users,Database &db) override;
-    bool authenticate(const std::string& username, const std::string& password, std::vector<user*>& users);
     void logout(Database& db) override;
     void showprofile(Database& db) override;
     void addCourse(std::string courseName, int creditHours = 0);
@@ -32,7 +31,8 @@ public:
     void removeCourse(std::string courseName,Database& db);
     std::vector<CourseGrade>& getEnrolledCourses();
     const std::vector<CourseGrade>& getEnrolledCourses() const;
-    void ShowGrades();
+    void ShowGrades(Database &db);
+    void ShowAcademicSummary(Database &db);
     void viewCourses(Database& db);
     void showMenu(std::vector<user*>& users,Database& db);
     std::string encryptpass() override;
