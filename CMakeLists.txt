@@ -1,6 +1,10 @@
 #minumem version to run ==
 cmake_minimum_required(VERSION 3.15)
 
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 #project name ==
 project(CampusManagement LANGUAGES CXX)
 
@@ -8,9 +12,23 @@ project(CampusManagement LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#GoogleTest
+include(FetchContent)
+
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/releases/download/v1.16.0/googletest-1.16.0.tar.gz
+    URL_HASH SHA256=78c676fc63881529bf97bf9d45948d905a66833fbfa5318ea2cd7478cb98f399
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(googletest)
+
 
 #set MySQL path
-set(MYSQL_DIR "C:/Program Files/MySQL/MySQL Server 8.0")
+set(MYSQL_DIR "C:/Program Files/MySQL/MySQL Server 8.0" CACHE PATH "MySQL installation directory")
 
 
 #find mysql.h and (libmysql.lib or mysql.lib)
@@ -97,12 +115,9 @@ target_link_libraries(
     Campus_app
     PRIVATE
     ${MYSQL_LIBRARY}
+    ws2_32
 
 )
-
-if(WIN32)
-    target_link_libraries(Campus_app PRIVATE ws2_32)
-endif()
 
 if(WIN32)
     add_custom_command(TARGET Campus_app POST_BUILD
@@ -144,11 +159,9 @@ target_link_libraries(
     Test_app
     PRIVATE
     ${MYSQL_LIBRARY}
+    ws2_32
+    GTest::gtest_main
 )
-
-if(WIN32)
-    target_link_libraries(Test_app PRIVATE ws2_32)
-endif()
 
 if(WIN32)
     add_custom_command(TARGET Test_app POST_BUILD
@@ -161,3 +174,13 @@ endif()
 # -----------------------------
 # Test Application -- END
 # -----------------------------
+
+
+# -----------------------------
+# Unit Testing - GoogleTest
+# -----------------------------
+
+enable_testing()
+
+include(GoogleTest)
+gtest_discover_tests(Test_app)

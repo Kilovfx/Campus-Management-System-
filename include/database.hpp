@@ -16,7 +16,7 @@ public:
 
     Database();
     ~Database();
-    bool connect();
+    bool connect(const string& databaseName = "");
     void disconnect();
     int getLastInsertID();
     MYSQL* getConnection();

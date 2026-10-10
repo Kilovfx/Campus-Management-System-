@@ -13,7 +13,7 @@ Database::~Database()
 }
 
 
-bool Database::connect()
+bool Database::connect(const string& databaseName)
 {
     MYSQL* initializedConnection = mysql_init(NULL);
 
@@ -30,7 +30,7 @@ bool Database::connect()
         DB_HOST.c_str(),
         DB_USER.c_str(),
         DB_PASSWORD.c_str(),
-        DB_NAME.c_str(),
+        (databaseName.empty() ? DB_NAME : databaseName).c_str(),
         3306,
         NULL,
         0

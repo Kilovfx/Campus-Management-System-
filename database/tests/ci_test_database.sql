@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS campus_managment;
-USE campus_managment;
+CREATE DATABASE IF NOT EXISTS campus_managment_test;
+USE campus_managment_test;
 
 SET FOREIGN_KEY_CHECKS = 0;
 

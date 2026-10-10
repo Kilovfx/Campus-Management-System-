@@ -82,7 +82,7 @@ jobs:
           const string DB_HOST = "localhost";
           const string DB_USER = "root";
           const string DB_PASSWORD = "";
-          const string DB_NAME = "campus_managment";
+          const string DB_NAME = "campus_managment_test";
           "@ | Set-Content include/db_config.hpp
 
 
@@ -159,15 +159,15 @@ jobs:
 
           Write-Host "Test database loaded successfully"
 
-          Write-Host "Running Test_app..."
+          Write-Host "Running GoogleTest tests through CTest..."
 
-          & ".\build\Test_app.exe"
+          ctest --test-dir build --output-on-failure
 
           if ($LASTEXITCODE -ne 0) {
-              throw "Test_app failed"
+              throw "GoogleTest tests failed"
           }
 
-          Write-Host "Test_app passed!"
+          Write-Host "GoogleTest tests passed!"
 
           Write-Host "Verifying logs table..."
 
