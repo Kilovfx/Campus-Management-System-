@@ -1,7 +1,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include <vector>
-#include <cassert>
+#include <set>
 #include "user.hpp"
 #include "admin.hpp"
 #include "database.hpp"
@@ -60,12 +60,15 @@ TEST_F(LoadUsersTest, RolesMatchDynamicType) {
     for (auto* u : users) {
         SCOPED_TRACE("user: " + u->getusername());
 
-        if (u->getRole() == "admin")
+        if (u->getRole() == "admin") {
             EXPECT_NE(dynamic_cast<admin*>(u), nullptr);
-        else if (u->getRole() == "Student")
+        } else if (u->getRole() == "Student") {
             EXPECT_NE(dynamic_cast<student*>(u), nullptr);
-        else if (u->getRole() == "Instructor")
+        } else if (u->getRole() == "Instructor") {
             EXPECT_NE(dynamic_cast<instructor*>(u), nullptr);
+        } else {
+            FAIL() << "Unexpected role: " << u->getRole();
+        }
     }
 }
 
