@@ -172,7 +172,7 @@ jobs:
           Write-Host "Verifying logs table..."
 
           & $mysql -u root --skip-password `
-            -e "USE campus_managment; SELECT * FROM logs;"
+            -e "USE campus_managment_test; SELECT * FROM logs;"
 
           if ($LASTEXITCODE -ne 0) {
               throw "Database verification failed"
